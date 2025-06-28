@@ -1,0 +1,23 @@
+# section 2
+1. @Validation at controller level
+
+2. Add a auditing to let Spring fill who made changes to the model
+See BaseEntity. @EntityListeners(AuditingEntityListener.class),  `@CreatedBy``@LastModifiedBy` depends on
+the AuditorAware<T> implementation class, see AuditAwareImpl in this case is the username AccountMs
+Application class: @EnableJpaAuditing(auditorAwareRef = "auditAwareImpl")
+
+2. Examples of how to use Swagger for api documentation
+http://localhost:8080/swagger-ui/index.html
+add @OpenAPIDefinition to the application class
+
+3. Actuator
+* Actuator endpoints expose useful information about the application
+— such as health, metrics, beans, environment, and more.
+* add dependency
+* enable it at application.properties files:
+management.endpoints.web.exposure.include=* or specific ones
+management.endpoints.web.exposure.include=health,info,metrics
+See all actuator endpoints at http://localhost:8080/actuator
+
+H2 console path:
+http://localhost:8080/h2-console/
