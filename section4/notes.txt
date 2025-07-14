@@ -1,0 +1,86 @@
+# Section about Docker
+ 1. On the accounts projects there an example on how to pack the application in a jar File using Docker
+ 1.1 DockerCompose file to start the three apps (accounts, cards and loans) and how to make its
+ communication
+
+ 2. Use Buildpack to build the docker image. It supports many languages.
+ 2.2 Include in the gradle file the name of the image
+ <image> username/microservice_name:tag </image>
+ <image> eazybytes/loans:s4 </image>
+ <image> eazybytes/${project.name}:s4 </image>
+
+ 2.3 on the project root path run
+      - mvn spring-boot:build-image
+      - docker run -p 8090:8090 eazybytes/loans:s4
+* investigate how to use Buildpacks with Gradle
+
+packetobuildpacks/builder will be downloaded to make the application images
+
+3. Once the image is built start the container using
+docker run -p [hostport]:[containerport] [image_name]
+docker run -p 8090:8090 eazybytes/loans:s4
+
+See page 47 of the guide for more useful Docker commands
+
+how to create an image:
+docker build -t [image-name] . -> include the "." as it's the current path
+# show all images
+docker images
+docker image ls
+# remove the image
+docker image rm [image-id]
+
+docker --version
+docker run <image_name>
+docker run -p <host_port:container_port> <image_name>
+docker log -f <id_container> # check
+
+# show running container locally
+docker container ps -a # get the id of the container here. -a shows stopped containers
+
+docker container start [container-id]
+docker container stop <container_id_firts_5_characters>
+docker container prune # remove all stopped containers
+
+#create images with tags
+docker pull mysql # download the image with 'latest' tag
+docker image remove <image_name>
+docker image history <image_name>
+
+docker container pause <id> # stops the container
+docker container unpause
+docker stats
+docker system df
+
+docker compose up -d -> to start services (containers) on the docker-compose.yaml file.
+docker compose down -> stops and removes the containers.
+docker compose stop -> stops the services without deleting them.
+
+docker image push [container_registry/username:tag]
+docker image pull [container_registry/username:tag] -> to download an image
+docker search adrianjpbv/ # to search on the remote Docker registry (Docker Hub)
+
+4. Jib is only for Java
+Github project: https://github.com/GoogleContainerTools/jib?tab=readme-ov-file
+Gradle plugin: https://github.com/GoogleContainerTools/jib/tree/master/jib-gradle-plugin
+
+4.1 add the plugin on gradle.build.kts
+4.2 add jib {} properties as needed. see doncumentation
+4.3 use jib command to push the image to a registry
+4.4 use jibDockerBuild to locally generate the image
+./gradlew jibDockerBuild --image=adrianjpbv/cards:s4
+
+4.3.1 use jib to push the image to the registry. Configure it according to the docs at
+https://github.com/GoogleContainerTools/jib/tree/master/jib-gradle-plugin#using-docker-hub-registry
+$ export DOCKER_USERNAME=username_at_registry
+$ export DOCKER_PASSWORD=pass
+$ ./gradlew jib --image=adrianjpbv/cards:s4
+then run the image as a container with
+$ docker run -p 9000:9000 adrianjpbv/cards:s4
+
+5 Using docker-compose
+5.1 build the image first with "docker build -t adrianjpbv/accounts:s4 ." . To create the image use
+ the dockerfile on each microservice or add Google's Jib
+5.2 then use the docker compose commands mentioned above
+
+

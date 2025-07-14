@@ -1,7 +1,7 @@
 # section 2
 1. @Validation at controller level
 
-2. Add a auditing to let Spring fill who made changes to the model
+2. Add auditing to let Spring fill who made changes to the model
 See BaseEntity. @EntityListeners(AuditingEntityListener.class),  `@CreatedBy``@LastModifiedBy` depends on
 the AuditorAware<T> implementation class, see AuditAwareImpl in this case is the username AccountMs
 Application class: @EnableJpaAuditing(auditorAwareRef = "auditAwareImpl")
