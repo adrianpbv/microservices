@@ -1,0 +1,37 @@
+# How configurations work how to inject values on the code
+Check AccountsController for examples
+1. Using @Value
+add property on application.properties files
+add on the code @Value("$build.info")
+
+2. Using Environment interface from org.springframework.core.env.Environment;
+@Autowired private Environment environment;
+then use it as environment.getProperty("JAVA_HOME");
+
+3. Use configuration properties files
+Create a dto class and add @ConfigurationProperties(prefix = "accounts")
+then on Application class add the dto class: @EnableConfigurationProperties(value = {AccountsContactInfoDto.class})
+
+# Profiles or Environments(PRODUCTION, QA, DEV)
+4. format to name application.properties files for different environments:
+application_production.properties
+application_qa.properties
+
+Active the profile with spring.profiles.active=production or on IntelliJ (this values has preference)
+Any configuration change after the applications runs should be made externally. Like changing a credentials to a db etc.
+
+Passing different values for configuration variables.
+
+5. The top preference is for the command line variables:
+java commands... --build.version=1.3 --spring.profiles.active=production
+
+Then the java virtual machine variable must start with -D
+-Dbuild.version=1.1
+
+Then environment variables, separated by semicolons:
+BUILD_VERSION=1.8;SPRING.PROFILES.ACTIVE=production
+
+
+
+
+
