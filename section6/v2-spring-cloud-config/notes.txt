@@ -1,0 +1,154 @@
+Section 6 Part 2
+Configurations with Spring Cloud
+1. Create new project for the Configuration Server (here as config-server project)
+1.1 Make sure to include the dependency on the build.gradle.kts file
+1.2 Add @EnableConfigServer on application java class (ConfigServerApplication).
+
+2. Moving application.properties files to config-server project
+2.1 create directory resources/config where all the client properties will be
+2.2 move the properties files of all the client projects to the new directory.
+Indicate the name of the microservice on the file. E.g:
+accounts.properties or accounts.properties
+Use a slash "-" and not under_score to separate the profile. E.g: loans-qa.properties, cards-production.properties
+2.3 add on the config-server properties file:
+spring.profiles.active=native
+spring.cloud.config.server.native.search-locations=classpath:/config
+2.4 Check to access the different properties at:
+GET 'http://localhost:8071/loans/default'
+GET 'http://localhost:8071/cards/qa'
+GET 'http://localhost:8071/accounts/prod'
+
+3 Read the configurations from the server on the client projects
+3.1 Add Spring Cloud Config Client configuration on the build.gradle.kts file
+3.2 On Each client project specify the application name and where the config server is:
+spring.profiles.active=default # it can be overridden by environment variables
+spring.application.name=accounts # the name has to match with the file at the config server like accounts-qa.properties
+spring.config.import=optional:configserver:http://localhost:8071/  # include optional if the service doesn't depend on the configuration server
+
+4 Reading the configuration from local system
+On the config-server project change the search-location property to the folder where the configurations are:
+spring.cloud.config.server.native.search-locations: "file:///Users//eazybytes//Documents//config"
+
+5. Reading the configuration from GitHub or any Git Remote VCS
+# This is when the repo is public
+spring.cloud.config.server.git.uri=https://github.com/adrianpbv/eazybytes-config.git
+# branch
+spring.cloud.config.server.git.default-label=main
+spring.cloud.config.server.git.timeout=5
+spring.cloud.config.server.git.clone-on-start=true
+spring.cloud.config.server.git.force-pull=true
+
+Documentation about the different profiles for config-server:
+https://spring.io/projects/spring-cloud#learn
+Click on the latest reference documentation and search for spring-config-cloud:
+https://docs.spring.io/spring-cloud-config/reference/server.html
+Git backend:
+https://docs.spring.io/spring-cloud-config/reference/server/environment-repository/git-backend.html
+
+6. Encrypt config values
+# add property:
+encrypt.key = 45D81EC1EF61DF9AD8D3E5BB397F9
+
+7. 87 Refresh properties at runtime with actuator
+# add property on the clients projects
+management.endpoints.web.exposure.include = refresh
+  After making the changes on the config server submit them to github
+call the endpoint on each client to get the new values:
+https://server/actuator/refresh
+
+8. 89 Refresh with Spring Cloud Bus
+Spring Cloud Bus links nodes of a distributed system with a lightweight message broker
+Doc: https://spring.io/projects/spring-cloud-bus
+Steps:
+Install RabbitMq with docker
+add dependency of spring cloud bus amqp on the build.gradle.kts file on each project including the config server
+* implementation("org.springframework.cloud:spring-cloud-starter-bus-amqp")
+enable the actuator management endpoint "busrefresh" on the clients
+add connection properties of RabbitMq on each project
+Call the endpoint on ONE client so the config server reloads all the new properties and all the clients are notified to
+reload the new values through RabbitMQ
+https://server/actuator/busrefresh
+It triggers a config change event and initiate a refresh on all the subscribed node.
+
+9. 90 Refresh with Spring Cloud Config Monitor
+9.1 add dependency of spring cloud monitor ONLY in the config-server. It allows the /monitor api
+ * implementation("org.springframework.cloud:spring-cloud-config-monitor")
+Note: As soon as this monitor API path receives a webhook request from the GitHub repo behind the scenes,
+it is going to invoke the actuator refresh event with the help of Spring Cloud Bus and RabbitMQ.
+
+add or should have RabbitMq
+Enable to receive WEBHOOKS locally using https://console.hookdeck.com/ . Add destination and follow steps.
+setup or add a webhook to get notified whenever there is a change on the GitHub repository
+Webhook:
+Payload url: your-server-cloud/postreceive
+Content Type: application/json
+Enable SSL: Yes
+Event: on Push only
+
+This approach is fully automated with the help of spring monitor and webhooks.
+
+10. 91 Adapt Docker Compose file to use Config Server and the other microservices
+create docker-compose directory
+create 3 folders: /default, /prod, /qa
+add the compose-docker file for each profile folder
+add the environment variables on each microservice client:
+SPRING_APPLICATION_NAME: "accounts"
+# here is configserver always:http://configserver the configserver name on the docker-compose file:8071/
+SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
+SPRING_PROFILES_ACTIVE: default
+
+11. Ensure Liveness and Readiness on the containers
+- liveness: to ensure the container is alive by passing a signal to the container to probe if it passes it or not.
+Attempt to heal the application by restarting it.
+- readiness: to ensure the container is ready to receive network traffic
+Spring gathers liveness and readiness on the global health endpoint "/actuator/health".
+They are also expose as separate HTTP Probes by using health groups "/actuator/health/liveness" and "/actuator/health/readiness"
+
+add management.health properties on config microservice
+management.health.livenessstate.enabled=true
+management.health.readinessstate.enabled=true
+
+In the future, whenever we have some dependent components on our service, then definitely need to implement these readiness and liveness.
+
+12. 93. Communicate to Docker compose the service's status
+add health check on the docker-compose.yml file for rabbit and config-server.
+depend_on and extend cannot be inside a service on the common-config file.
+
+13. Using docker-compose
+generate each the docker images with Google Jib for each microservice. use the command:
+$ ./gradlew jibDockerBuild
+Push the images to DockerHub to make them available whenever you're using them
+$ docker image push docker.io/adrianjpbv/config-server:s6
+Go to docker-compose folder and run
+$ docker compose up -d
+Now all the services should be running and anytime you change something on the config-server github repo the update should be loaded
+on the microservices.
+Remember to add the WEBHOOK on the config-server github settings to point your server/monitor endpoint
+Add env var SPRING_RABBITMQ_HOST:"rabbit" to connect to the service created on the docker-compose file
+
+14. Running docker compose for different Profiles:
+cd to the desired folder's profile and execute the command above
+$ cd docker-compose/prod
+$ docker compose up -d --> to start the containers
+$ docker compose down
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
