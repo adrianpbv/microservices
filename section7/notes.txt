@@ -1,0 +1,34 @@
+Section 7
+1. Copy section 6 v2 code and Remove RabbitMQP properties on the app file and its dependency of amqp
+see account build.gradle.kts file
+Remove it from All microservices
+2. Install MySql with docker. Run the command:
+$ docker run -p 3306:3306 --name accountsdb -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=accountsdb -d mysql
+This command will create a container with the db accountsdb and password root for the user root
+-p <outside-port>:<port-container>
+3. remove H2 dependency and add MySql on microservices: accounts, cards, loans
+runtimeOnly("com.mysql:mysql-connector-j")
+4. To Run The config-server as RabbitMQP was reomved add this property to application.properties file:
+spring.cloud.bus.enabled=false
+5. Enable the service t connect to the db. Add it on the docker-compose.yml file
+5.1 This database-ms (microservice) can be created along with other services on the docker-compose
+I have commented out all lines related to database-ms as it will be created separately
+6. Check env variables for docker-compose has to be in a file .env or as system environment variables
+
+tip: Lock for health check commands for docker containers
+config-server health check is at actuator/health
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

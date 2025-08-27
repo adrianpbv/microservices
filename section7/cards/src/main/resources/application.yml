@@ -1,0 +1,42 @@
+server:
+  port: 9000
+spring:
+  application:
+    name: "cards"
+  profiles:
+    active: "default"
+  datasource:
+    url: jdbc:mysql://localhost:3306/msdb
+    username: kotlin
+    password: kotlin1234
+  jpa:
+    show-sql: true
+  sql:
+    init:
+      mode: always
+  config:
+    import: "optional:configserver:http://localhost:8071/"
+#  rabbitmq:
+#    host: "localhost"
+#    port: 5672
+#    username: "guest"
+#    password: "guest"
+
+# Spring Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+#build:
+#  version: "3.0"
+#
+#cards:
+#  message: "Welcome to EazyBank cards related local APIs "
+#  contactDetails:
+#    name: "Dragos Lech - Developer"
+#    email: "dragos@eazybank.com"
+#  onCallSupport:
+#    - (412) 419-3491
+#    - (915) 382-1932

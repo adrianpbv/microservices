@@ -1,0 +1,101 @@
+services:
+#  database-ms:
+#    container_name: mysql-server
+#    ports:
+#      - 3306:3306
+#    environment:
+#      MYSQL_DATABASE: msdb
+#    extends:
+#      file: common-config.yml
+#      service: microservice-db-config
+
+#  rabbit:
+#    image: rabbitmq:3.13-management
+#    hostname: rabbitmq
+#    ports:
+#      - "5672:5672"
+#      - "15672:15672"
+#    healthcheck:
+#      test: rabbitmq-diagnostics check_port_connectivity
+#      interval: 10s
+#      timeout: 5s
+#      retries: 10
+#      start_period: 5s
+#    extends:
+#      file: common-config.yml
+#      service: network-deploy-service
+
+  configserver:
+    image: "adrianjpbv/config-server:s7"
+    container_name: configserver-ms
+    ports:
+      - "8071:8071"
+    env_file:
+      - .env
+    environment:
+      GIT_CONFIG_SERVER: ${GIT_CONFIG_SERVER}
+    #    depends_on:
+#      rabbit:
+#        condition: service_healthy
+    healthcheck:
+      test: "curl --fail --silent localhost:8071/actuator/health | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    extends:
+      file: common-config.yml
+      service: microservice-base-config
+
+  accounts:
+    image: "adrianjpbv/accounts:s7"
+    container_name: accounts-ms
+    ports:
+      - "8080:8080"
+    depends_on:
+#      database-ms:
+#        condition: service_healthy
+      configserver:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_NAME: "accounts"
+#      SPRING_DATASOURCE_URL: "jdbc:mysql://accountsdb:3306/accountsdb"
+    extends:
+      file: common-config.yml
+      service: microservice-configserver-config
+
+  loans:
+    image: "adrianjpbv/loans:s7"
+    container_name: loans-ms
+    ports:
+      - "8090:8090"
+    depends_on:
+#      database-ms:
+#        condition: service_healthy
+      configserver:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_NAME: "loans"
+    extends:
+      file: common-config.yml
+      service: microservice-configserver-config
+
+  cards:
+    image: "adrianjpbv/cards:s7"
+    container_name: cards-ms
+    ports:
+      - "9000:9000"
+    depends_on:
+#      database-ms:
+#        condition: service_healthy
+      configserver:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_NAME: "cards"
+    extends:
+      file: common-config.yml
+      service: microservice-configserver-config
+
+networks:
+  eazybank:
+    driver: "bridge"
