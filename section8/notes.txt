@@ -1,0 +1,90 @@
+Section 8
+1. class 109. Create Eureka Server for service discovery and service registration
+1.1 add @EnableEureKServer to enable the Spring app to act as a Service Discoveru
+
+2. Add eurekaserver.properties file on the config-server git
+3. Add config server details on the eureka server project
+4. Run config-server and eureka server
+4.1 Call config-server-url to make sure the props are loaded
+http://localhost:8071/eurekaserver/default
+4.2 call GET localhost:8070 (on the browser) to see the service discovery of Eureka Server
+
+5 Add Eureka Discovery Client to the ms
+implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
+5.1 Connect to Eureka Server, add the properties on the application.properties file on each ms
+The ms will register with Eureka and the same time they are going to send a heartbeat signal every 30 seconds
+
+We are trying to implement this service discovery and service registration along with the load balancing
+step by step. The very first step that we need to make sure is, we should have a separate centralized server which
+is responsible for storing all the service registry details and act as a service discovery agent.
+
+That's why we have built the Eureka Server and post that we should make sure all our accounts microservice,
+they are registering their details during the startup and that's what we have done by making the changes
+inside the respective individual microservices.
+
+6. Shutdown the ms to unregister the service from Eureka Server, this is done automatically when the ms are shutdown/.
+POST http://localhost:9000/actuator/shutdown
+When the Eureka Server is down the ms cannot send the heartbeat signal to it.
+
+7. Load balancing using Eureka server
+Open Feign Client library is used to establish the connection with the ms.
+add the library inside each ms
+add @EnableFeignClients so account ms can connect with other ms like loans and cards
+
+8 See configuration about Eureka Self-Preservation mode to avoid network trap issues on the pdf file of the course page 100.
+During Self-preservation, eureka will stop expiring the instances though it is not receiving heartbeat from instance 3.
+
+9. Add Google Jib library to Eureka Server to build docker image
+$ ./gradlew jibDockerBuild
+$ docker compose up -d
+$ docker compose down
+10. Push images to Docker hub
+$ docker image push docker.io/adrianjpbv/accounts:s8
+
+11. Make 2 instances of loans ms in the docker compose file
+12. When calling the fetchCustomerDetails, the load balancing is happening automatically, sometimes feign calls the
+loans instance 1 and sometimes the other instance 2.
+
+13. Check GraalVM jdk
+https://youtu.be/SISjh1krECE
+
+Descriptions about how the MS, Eureka and Feign works together:
+So whenever my accounts microservice is trying to connect with other microservices, it will go and
+check with the service Discovery agent, which is Eureka!
+
+Like, Hey, Eureka, please give me the details of loans
+microservice. Eureka Server will say, okay buddy, please wait for a few seconds.
+
+Let me check my registry details. After checking the registry details, my Eureka server is going to provide all the instance details
+along with their information to my accounts microservice. If there are multiple instance details received behind the scenes,
+my feign client is going to use the spring cloud load balancer and after performing the load balancing strategy, my feign client
+is going to invoke one of the instance of loans or cards microservice.
+
+Behind the scenes there is a lot of work went and all this work is right now being taken care by the
+feign client Eureka Server. We as developers, we wrote some configurations, we wrote some interfaces and methods, and with that
+the communication between the microservices is happening perfectly.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
