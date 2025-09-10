@@ -1,0 +1,61 @@
+Section 9 Spring Cloud Gateway
+1. Documentation
+https://spring.io/projects/spring-cloud-gateway#overview
+https://docs.spring.io/spring-cloud-gateway/reference/
+
+2. Create gateway-server project with the dependencies:
+Reactive Gateway (webflux)
+Spring Cloud Starter (to enable the config-server client and load the configurations from the config server)
+eureka-client to fetch all the services from eureka server
+
+3. Start the services on this order:
+config-server
+eureka-server
+user-service (account, loans, cards)
+product-service
+gateway-server
+
+once started the service you can see the on the Eureka dashboard at http://localhost:8070/
+
+4. See actuator endpoints http://localhost:8072/actuator/
+41. See the gateway routes http://localhost:8072/actuator/gateway/routes
+Example of a service route:
+{
+"predicate": "(RouteDefinitionRouteLocator$$Lambda/0x00000003017c6e18 && Paths: [/cards/**], match trailing slash: true)",
+"metadata": {
+"management.port": "9000" // port of the service
+},
+"route_id": "ReactiveCompositeDiscoveryClient_CARDS",
+"filters": [
+"[[RewritePath /cards/?(?<remaining>.*) = '/${remaining}'], order = 1]" // cards path and forward the remaining path
+],
+"uri": "lb://CARDS", // lb means load balancer from eureka
+"order": 0
+},
+
+Default routes
+Gateway-server has discovery.locator.enabled=true
+http://localhost:8072/cards/api/create
+http://localhost:8072/cards/api/create
+http://localhost:8072/cards/api/create
+
+5. Disable discovery.locator.enabled and add the routes manually in the gateway-server application class.
+5.1 Documentation to implement routes manually
+https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway-server-webflux/fluent-java-routes-api.html
+6. Documentation about Route Filters:
+https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway-server-webflux/gatewayfilter-factories.html
+AddResponseHeader GatewayFilter Factory
+https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway-server-webflux/gatewayfilter-factories/addresponseheader-factory.html
+
+7. Create Filters on the gateway-server (gs) to add a request header id to track requests made by the client.
+This allow to intercept the request that comes through the gs and add logs, security, etc.
+
+8.
+
+
+
+
+
+
+
+
