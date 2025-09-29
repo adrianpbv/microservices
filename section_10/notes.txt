@@ -1,0 +1,335 @@
+Section 10 Resilience
+1. Implement Circuit Breaker (CB) pattern at the edge server
+Add this dependency to the Gateway project
+implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j")
+
+State Closed: circuit breaker is closed Initially and accepts requests.
+State Open: circuit breaker is open if the number of failures exceeds the threshold, it will make the requests fail fast.
+State Half Open: circuit breaker is half open by allowing a few requests to pass through and then checking the result. If
+the failure rate is above the threshold, the circuit breaker will be closed.
+State closed: if the number of failures drops below the threshold
+
+1.1 add CB on the GatewayServerApplication for the account microservice (MS)
+
+2. Add property to the gateway project
+resilience4j.circuitbreaker.default # applies for all CB on the MS
+
+3. Start projects starting by
+Config Server
+Eureka Server
+Gateway Server
+Account MS
+Other MS
+
+3.1 Eureka Server. Check GateWay Server is registered in Eureka Server and the other MS
+http://localhost:8070/
+
+3.2 Gateway server.
+http://localhost:8072/actuator/
+
+3.3 Circuit breaker on the Gateway Server.
+Shows all the CB on the Gateway Server.
+http://localhost:8072/actuator/circuitbreakers
+
+Example response CB of account microservice. CHECK its STATE
+{
+  "circuitBreakers": {
+    "accounts-circuit-breaker": {
+      "failureRate": "-1.0%",
+      "slowCallRate": "-1.0%",
+      "failureRateThreshold": "50.0%",
+      "slowCallRateThreshold": "100.0%",
+      "bufferedCalls": 1,
+      "failedCalls": 0,
+      "slowCalls": 0,
+      "slowFailedCalls": 0,
+      "notPermittedCalls": 0,
+      "state": "CLOSED"  // STATES: OPEN, HALF_OPEN, CLOSED
+    }
+  }
+}
+
+3.4 CB Events
+http://localhost:8072/actuator/circuitbreakerevents
+http://localhost:8072/actuator/circuitbreakerevents/accounts-circuit-breaker
+
+Note: you can see on the events that CB is continuously checking the status of the MS (bullet 3.3).
+
+3.5
+the Gateway Server returns 504 error code because the CB is open and the MS is not responding.
+After the MS is cut off from the Gateway Server by the CB because of too many failed requests
+according to the threshold, it returns 503 error code Service Unavailable.
+{
+      "circuitBreakerName": "accounts-circuit-breaker",
+      "type": "SUCCESS",
+      "creationTime": "2025-09-13T23:36:02.821485-04:00[America/New_York]",
+      "errorMessage": null,
+      "durationInMs": 5,
+      "stateTransition": null
+    },
+    // EXAMPLE request when the MS did not respond back (I put a debug break point)
+    {
+      "circuitBreakerName": "accounts-circuit-breaker",
+      "type": "ERROR",
+      "creationTime": "2025-09-13T23:36:14.801540-04:00[America/New_York]",
+      "errorMessage": "io.netty.channel.AbstractChannel$AnnotatedConnectException: Connection refused: /192.168.50.84:8080",
+      "durationInMs": 8,
+      "stateTransition": null
+    }
+    // EXAMPLE request after 6 of 10 failed requests. It returns 503 error code. State transition 1
+        {
+          "circuitBreakerName": "accounts-circuit-breaker",
+          "type": "FAILURE_RATE_EXCEEDED",
+          "creationTime": "2025-09-13T23:39:44.398799-04:00[America/New_York]",
+          "errorMessage": null,
+          "durationInMs": null,
+          "stateTransition": null
+        },
+        // State transition 2
+        {
+              "circuitBreakerName": "accounts-circuit-breaker",
+              "type": "STATE_TRANSITION",
+              "creationTime": "2025-09-13T23:39:44.401864-04:00[America/New_York]",
+              "errorMessage": null,
+              "durationInMs": null,
+              "stateTransition": "CLOSED_TO_OPEN"
+        },
+        // State transition 3 returns 503 error code. For 10 seconds
+        {
+              "circuitBreakerName": "accounts-circuit-breaker",
+              "type": "NOT_PERMITTED",
+              "creationTime": "2025-09-13T23:39:46.680944-04:00[America/New_York]",
+              "errorMessage": null,
+              "durationInMs": null,
+              "stateTransition": null
+            },
+            // State transition 4 Allows the request to pass through
+            {
+                  "circuitBreakerName": "accounts-circuit-breaker",
+                  "type": "STATE_TRANSITION",
+                  "creationTime": "2025-09-13T23:44:13.587721-04:00[America/New_York]",
+                  "errorMessage": null,
+                  "durationInMs": null,
+                  "stateTransition": "OPEN_TO_HALF_OPEN"
+                },
+                // State transition 5 Request failed
+                {
+                  "circuitBreakerName": "accounts-circuit-breaker",
+                  "type": "ERROR",
+                  "creationTime": "2025-09-13T23:44:14.590812-04:00[America/New_York]",
+                  "errorMessage": "java.util.concurrent.TimeoutException: Did not observe any item or terminal signal within 1000ms in 'circuitBreaker' (and no fallback has been configured)",
+                  "durationInMs": 1000,
+                  "stateTransition": null
+                },
+                   {
+                      "circuitBreakerName": "accounts-circuit-breaker",
+                      "type": "ERROR",
+                      "creationTime": "2025-09-13T23:46:25.450005-04:00[America/New_York]",
+                      "errorMessage": "java.util.concurrent.TimeoutException: Did not observe any item or terminal signal within 1000ms in 'circuitBreaker' (and no fallback has been configured)",
+                      "durationInMs": 1000,
+                      "stateTransition": null
+                    },
+                    // After 2 failed requests, the CB is Open again and it allow some requests to pass through
+                    {
+                      "circuitBreakerName": "accounts-circuit-breaker",
+                      "type": "STATE_TRANSITION",
+                      "creationTime": "2025-09-13T23:46:25.450493-04:00[America/New_York]",
+                      "errorMessage": null,
+                      "durationInMs": null,
+                      "stateTransition": "HALF_OPEN_TO_OPEN"
+                    },
+
+Notes: the circuit breaker pattern is doing a lot of work behind the scenes to make our microservices fault tolerant and resilient.
+The gateway server is saving resources for opening too many threads and waiting for
+the response from the accounts microservice with the help of the circuit breaker pattern.
+
+4. Return a message to the user when the CB is open.
+Implement a fallback method in the Gateway server. FallbackController
+
+5. Account MS depends on Cards and Loans on the /fecthCustomerDetails endpoint.
+Implement CB pattern inside the Account MS to avoid the failure ripple effect in case other MS are down.
+Documentation: https://spring.io/projects/spring-cloud-openfeign LEARN section
+https://docs.spring.io/spring-cloud-openfeign/reference/
+https://docs.spring.io/spring-cloud-openfeign/reference/spring-cloud-openfeign.html#spring-cloud-feign-circuitbreaker
+
+5.1 add dependency to the Account MS
+implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j")
+add property to the Account MS
+spring.cloud.openfeign.circuitbreaker.enabled=true
+Add also circuit breaker properties to the Account MS application.properties file as the Gateway server's file.
+
+Read Fallback mechanism from the docs as We need to define the fallback mechanism for our cards and loans.
+What should happen when loans microservice is down.
+https://docs.spring.io/spring-cloud-openfeign/reference/spring-cloud-openfeign.html#spring-cloud-feign-circuitbreaker-fallback
+
+5.2 Add fallback Controller class to the Account MS
+5.3 Add the fallback Controller name to the Feign Client:
+@FeignClient(name = "loans", fallback = LoansFallback.class) // loans is the name of the instance on the Eureka server
+public interface LoansFeignClient { ... }
+
+Note: By making Account MS implement the CB pattern it will continue to work even if the Loans or Cards MS are down.
+
+6. Http timeouts
+Documentation:
+https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway-server-webflux/http-timeouts-configuration.html#page-title
+
+the gateway server waits 1s to make a connection to any MS
+spring.cloud.gateway.server.webflux.httpclient.connect-timeout=1000
+the gateway server waits 2s to get a response from any MS
+spring.cloud.gateway.server.webflux.httpclient.response-timeout=2s
+
+See documentation for more configuration and filter on the Gateway routes.
+
+7.Retry pattern
+Retry the attempt when a service has temporarily failed. This pattern is very helpful on network issues where the client
+ may succeed after a few retries.
+
+Key Components:
+Retry Logic: When and how many times to retry an operation.
+Back-off Strategy: How long to wait before retrying. Known as the exponential backoff.
+Circuit Breaker Integration. Integration with the CBP if a certain number of retries fail consecutively, the circuit breaker
+ can be opened to prevent further attempts and preserve system resources.
+Idempotent Operations: Ensure the retried operation is idempotent. Meaning it produces the same result regardless of the
+ number of times it is invoked. This prevents unintended side effects or duplicate operations.
+
+8. Implement Retry pattern
+add the filter to the Gateway server application file
+.retry(retryConfig -> retryConfig.setRetries(3) // how many times to retry IT actually is 3 + 1 attempt
+											.setMethods(HttpMethod.GET) // only retry GET requests ensure idempotent requests
+											.setBackoff(Duration.ofMillis(100),Duration.ofMillis(1000),2,true)) //back-off strategy
+
+9. Add Retry on Account MS
+add @Retry annotation to one of the @GetMapping methods
+see AccountsController.getBuildInfo()
+@Retry(name = "getBuildInfo",fallbackMethod = "getBuildInfoFallback")
+fallback method should have same signature as the original method.
+
+add properties in the application.properties file
+resilience4j.retry.configs.default.max-attempts=3 // how many times to retry IT actually is 3 attempt a diferencia del gateway server
+resilience4j.retry.configs.default.wait-duration=500 // the CB will come into picture because the request waits more than the specified wait time of the CB.
+
+Resilience4j documentation:
+https://resilience4j.readme.io/docs/getting-started-3
+
+on the retry operations if the request waits more than the specified wait time of the CB it will be triggered.
+you need to add the TimeLimiter configuration on the Gateway server.
+timeLimiterConfig allows to specify whats the maximum time the application is going to wait to complete an operation.
+
+add configs to not retry on certain exceptions
+resilience4j.retry.configs.default.ignore-exceptions=java.lang.NullPointerException
+when this exception is thrown, the retry will not be triggered and the fallback method will be called.
+
+config to ONLY retry when there is certain exception
+resilience4j.retry.configs.default.retry-exceptions=java.util.concurrent.TimeoutException
+on this case the ignore-exceptions is not needed as the retry will only be triggered when the specified exceptions are thrown.
+
+
+10. Implement Rate Limiting Pattern
+It helps protect the MS from being overwhelmed by excessive or malicious many requests.
+It ensures stability, performance and availability of the system while providing controller access to the resources.
+
+Associated http error code is 429: Too Many Requests status code.
+
+10.1 Documentation
+https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway-server-webflux/gatewayfilter-factories/requestratelimiter-factory.html#page-title
+
+Have ready Redis docker container for the Redis Rate-Limiter
+docker run -p 6379:6379 --name redis-rate-limiter -d redis
+
+add dependency to the Gateway server
+implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
+
+specify properties in the Gateways's application.properties to connect to Redis server
+spring.data.redis.port=6379
+spring.data.redis.host=localhost
+spring.data.redis.connection-timeout=2s
+spring.data.redis.timeout=1000
+
+add to Gateway server application class beans for
+KeyResolver: what the criteria to limit the requests, by user, by IP, by URL, etc.
+RedisRateLimiter: setup properties to define how the rate limiter will work. See properties in the documentation.
+redis-rate-limiter.replenishRate=1 // how many requests (token in the bucket) per second
+redis-rate-limiter.burstCapacity=1 // maximum number of token per second in the bucket
+redis-rate-limiter.requestedTokens=1 // cost of each request 1 request = 1 token
+
+install Apache Benchmark project to test the Rate limiter
+brew install httpd
+# Verify
+ab -V
+which ab
+
+To test rate limiter with Apache Benchmark:
+ab -n 10 -c 2 -v3 http://localhost:8072/eazybytes/cards/api/contact-info
+details: -n 10: number of requests to send
+-c 2: number of concurrent requests
+-v: verbose mode
+3: verbosity level. higher = more detail. (or -v3) typically includes response headers for each request.
+
+Check the Apache report. Example
+Concurrency Level:      2
+Time taken for tests:   0.027 seconds
+Complete requests:      10
+Failed requests:        9
+
+10.2 Add RateLimiter to Account MS
+add resilience4j.ratelimiter properties to the Account MS application.properties file
+
+Add @RateLimiter annotation on any endpoint in the Controller e.g.: AccountController.getJavaVersion()
+@RateLimiter(name= "getJavaVersion", fallbackMethod = "getJavaVersionFallback")
+
+11. Bulkhead Pattern
+Bulkhead pattern is a design pattern that aims to improve the resilience and isolation of components or services within a service.
+It's used to isolate and limit the impact of failures or high loads in one component from spreading to other components.
+If there is a failure or heavy load in one part of the system it does not bring down the
+entire system, enabling other components to continue functioning independently.
+
+Bulkhead Pattern helps us to allocate and limit the resources which can be used for specific
+services. So that resource exhaustion can be reduced.
+
+Bulkhead pattern enhances the resilience and stability of the system.
+
+Documentation:
+https://resilience4j.readme.io/docs/getting-started-3 search for resilience4j.bulkhead and resilience4j.thread-pool-bulkhead properties
+https://resilience4j.readme.io/docs/bulkhead
+
+@Bulkhead(name = BACKEND, type = Bulkhead.Type.THREADPOOL)
+
+With Bulkhead, /myCustomerDetails and /myAccount will have their own resources, threads pool defined
+
+Test Bulkhead pattern with Loadrunner or JMeter where you can see the thread usage.
+
+12. Aspect order of Resilience4j
+https://resilience4j.readme.io/docs/getting-started-3#aspect-order
+
+Use only the required patterns on the MS and Test them.
+
+13. Run the MS with Docker
+add Redis service to the docker-compose file
+add Redis's env variables to the docker-compose file on the Gateway service
+
+MS git-hub repo: https://github.com/eazybytes/microservices. See links and commands.
+Test resilience4j patterns on the docker container:
+Rate Limiter on Account MS:
+http://localhost:8072/eazybank/accounts/api/java-version => call it several times to get the fallback response.
+Rate Limiter on the Gateway server:
+ab -n 10 -c 2 -v3 http://localhost:8072/eazybank/cards/api/contact-info
+
+Summary:
+1. Implement Circuit Breaker pattern
+2. Implement Retry pattern
+3. Implement Rate Limiting pattern
+4. Review concept of Bulkhead pattern
+5. Run the MS with Docker
+6. Test resilience4j patterns on the docker container
+
+
+
+
+
+
+
+
+
+
+
+
