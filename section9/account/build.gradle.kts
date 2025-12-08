@@ -36,7 +36,6 @@ jib {
         // run the command: $ ./gradlew jibDockerBuild
         image = "adrianjpbv/${project.name}:s9" // image name will be adrianjpbv/accounts:s8
         auth {
-            // TODO set environment variables
             username = System.getenv("DOCKER_USERNAME") ?: project.findProperty("docker.username") as String?
             password = System.getenv("DOCKER_PASSWORD") ?: project.findProperty("docker.password") as String?
         }

@@ -210,7 +210,7 @@ public class AccountsController {
     public ResponseEntity<String> getJavaVersion() {
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(environment.getProperty("JAVA_HOME")); // TODO adding environment variables
+                .body(environment.getProperty("JAVA_HOME"));
     }
 
     @Operation(
@@ -235,7 +235,7 @@ public class AccountsController {
     public ResponseEntity<AccountsContactInfoDto> getContactInfo() {
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(accountsContactInfoDto); // TODO adding configuration property file
+                .body(accountsContactInfoDto); // adding configuration property file
     }
 
 }

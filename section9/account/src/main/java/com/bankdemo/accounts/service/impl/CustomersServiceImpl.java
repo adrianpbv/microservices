@@ -24,7 +24,7 @@ public class CustomersServiceImpl implements ICustomersService {
 
     private AccountsRepository accountsRepository;
     private CustomerRepository customerRepository;
-    // TODO step 9 Add the services to get data from other ms. OpenFeign takes care of fetching data and balancing the load and Eureka provides ip of the instance of the ms (discovery service)
+    // Add the services to get data from other ms. OpenFeign takes care of fetching data and balancing the load and Eureka provides ip of the instance of the ms (discovery service)
     private CardsFeignClient cardsFeignClient;
     private LoansFeignClient loansFeignClient;
 

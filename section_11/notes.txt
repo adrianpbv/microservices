@@ -1,0 +1,216 @@
+# Section 11 Logging with Grafana
+Summary:
+Observability and monitoring of microservices.
+observability: metric, logs, tracing.
+monitoring: identify and troubleshoot issues. track the health of the system and optimize performance. tools: Prometheus, Grafana, Loki, Alloy.
+
+to run this project go to each ms directory and generate the docker image with jib:
+ms: accounts, cards, loans, gateway-server, config-server, eureka-server
+e.g.:
+$ cd /accounts
+$ ./gradlew jibDockerBuild  // generates docker image with jib
+
+Documentation to Grafana:
+https://grafana.com/docs/loki/latest/get-started/quick-start/quick-start/
+Read the components it has to get the logs from the MS and make a dashboard where the user can search on the logs.
+
+15-Factor methodology recommends the same to treat logs as events streamed to the standard output
+and not concern with how they are processed or stored.
+
+1. Running the MS and Grafana. Check logs in Grafana UI
+Follow Grafana documentation to get started, and download the configuration file for docker.
+check configuration at docker-compose/observability
+update the docker-compose.yml file with the configuration (services) for grafana and its components.
+run the command: docker-compose up -d
+
+Access the Grafana dashboard at http://localhost:3000/
+Access the Loki dashboard at http://localhost:3000/explore/
+search for Loki, Label filter by the container and select the accounts MS to see its logs
+to refine logs use the filet below with option like "Line contains" "Like contains regex match"
+click on the button > Run query
+button > Live show the logs in real time of the selected MS
+
+on the minio service in the docker-compose.yml file update the volume to save the data in a cloud storage like AWS S3.
+currently data is saved at docker-compose/prod/.data/minio because is the directory specified with this instruction:
+volumes:
+  - ./.data/minio:/data  # matches directory at the .data/minio folder and /data is inside the docker container.
+
+2. Metrics
+So here, since we decided to use Prometheus, we need to add the dependency related to micrometer and
+Prometheus. And micrometer is going to take care of exposing all your metrics in a format that Prometheus can understand.
+
+With the help of Loki, we are trying to aggregate the logs, whereas with the help of Prometheus we
+are going to aggregate the metrics of all your containers and microservices.
+
+https://micrometer.io/
+https://docs.micrometer.io/micrometer/reference/installing.html
+
+add micrometer and prometheus dependency on each MS.
+add property to group the metrics by application name.
+management.metrics.tags.application=${spring.application.name}
+
+Generate s11 images, run the containers with
+docker compose up -d => at docker-compose/prod
+
+Test running the MS
+Start 1st config-server
+Start 2nd eureka-server
+accounts
+loans
+cards
+gateway-server
+
+check all the metrics exposed by actuator at http://localhost:8080/actuator/metrics
+example usage:
+http://localhost:8080/actuator/metrics/system.cpu.usage
+http://localhost:8080/actuator/metrics/process.uptime
+
+3. Prometheus
+url where Prometheus will read the metrics:
+http://localhost:8080/actuator/prometheus => at accounts MS
+
+Prometheus is monitoring the MS shown on this UI
+http://localhost:9090/targets
+
+Prometheus documentation:
+https://prometheus.io/docs/prometheus/latest/getting_started/
+https://prometheus.io/docs/prometheus/latest/getting_started/#configuring-prometheus-to-monitor-itself
+
+make sure to add prometheus in the docker-compose file
+https://prometheus.io/docs/prometheus/latest/installation/#using-docker
+add volumes to persist the data:
+volumes:
+    - /path/to/prometheus.yml:/etc/prometheus/prometheus.yml
+
+Prometheus dashboard:
+http://localhost:9090/
+Usage: '/graph' type to search metrics for 'system_cpu_usage'
+
+4. Grafana and Prometheus
+Make sure to add the prometheus datasource in Grafana. see datasource.yml file at docker-compose/observability/grafana/datasource.yml
+
+Check datasources in Grafana UI
+localhost:3000/datasources
+You should see Loki and Prometheus
+Loki is to aggregate the logs,
+Prometheus is to aggregate the metrics.
+
+Explore the metrics in Grafana UI
+localhost:3000/explore
+Check for prometheus and select any metric, select a Label e.g.: application. Click on the button > Run query
+Grafana is a more advanced/mature tool to visualize the metrics.
+
+4.1 Pre-built Prometheus graphs in Grafana
+Check documentation about capabilities of Prometheus on Grafana:
+https://prometheus.io/docs/visualization/grafana/
+https://prometheus.io/docs/visualization/grafana/#importing-pre-built-dashboards-from-grafanacom
+on https://grafana.com/grafana/dashboards/ search for JVM related dashboards.
+
+import the dashboard into Grafana.
+http://localhost:3000/dashboards
+copy and paste url of the dashboard. save later the dashboard.
+with The Micrometer or Spring 2.1 dashboards you can see useful metrics.
+create a new custom dashboard. add > new dashboard > add rule
+update rule's name like account. Add new Visualization > Select source prometheus
+using prometheus you can filter by application name and select the metric like system.cpu.usage
+update the visualization to look like as you want, give it a title and >> save dashboard.
+
+'up' metric and 'job' is whether the MS is up or down.
+
+5. Send Alert through Grafana
+http://localhost:3000/alerting
+5.1 create a new alert rule.
+Define the query based on Prometheus datasource
+5.1.1 A create alert based on the UP metric.
+5.1.2 Expression B: From A (UP metric) Function Last and Stric
+5.1.3 Expression C: FROM B trigger the alert if it is less than 1 (MS is down)
+5.1.4 Set evaluation behavior
+ Folder and group = accounts
+ Pending period:  threshold condition must be met to trigger the alert.
+  Selecting "None" triggers the alert immediately once the condition is met.
+  set to 30s
+
+5.1.5 Create a contact point with webhook.
+https://console.hookdeck.com/
+Override timing to stop sending the notification after some time once it is sent the 1st time.
+
+5.1.6 Save rule
+
+Example of alert notification:
+{
+"receiver": "AdrianWebHook",
+"status": "firing",
+"alerts":
+[
+{
+"status": "firing",
+"labels":
+{
+"alertname": "Accounts",
+"grafana_folder": "accounts",
+"instance": "accounts:8080",
+"job": "accounts"
+},
+"annotations":
+{
+"description": "Please review account MS is down",
+"summary": "account MS is down"
+},
+"startsAt": "2025-11-12T03:50:50Z",
+"endsAt": "0001-01-01T00:00:00Z",
+"generatorURL"::
+
+5.2 add new dashboard with an Alert
+Dashboard > New Dashboard > Add Visualization > Query > Alerts
+Setup Query (A) Datasource Prometheus, up metric, job, cards
+Set title: "CardUp" and Save Dashboard
+Setup Alert similarly to the previous step (5.1).
+
+6. Tracing with OpenTelemetry
+Sprint Sleuth will not receive any updates in the future, they move the project to Micrometer.
+https://spring.io/projects/spring-cloud-sleuth
+Micrometer supports distributed tracing with OpenTelemetry.
+On this course will be used OpenTelemetry, it's simpler to setup and supports more languages. It's supported by Cloud Native Computing Foundation.
+https://opentelemetry.io/docs/languages/java/getting-started/
+https://opentelemetry.io/docs/languages/java/getting-started/#instrumentation
+
+6.1 Add OpenTelemetry dependency on each MS.
+runtimeOnly("io.opentelemetry.javaagen:opentelemetry-javaagent:2.21.0")// will include the jar to the classpath so the OpenTelemetry agent can generate the logs with the trace(traceId, spanId).
+6.2 Update the logging pattern on each MS as opentelemetry will add the traceId and spanId to the logs.
+logging.pattern.level
+6.2.1 See accounts/CustomerController#fetchCustomerDetails no longer need to pass the correlationId.
+
+6.3 Add environment vars to the common-config.yml docker file and also the env var:
+OTEL_SERVICE_NAME: "loans" -- on each MS in the docker-compose file.
+
+6.4 Add tempo settings file at observability/tempo/tempo.yml
+6.5 Add tempo datasource at observability/grafana/datasource.yml
+6.6 Setup tempo service in the docker-compose file.
+
+Notes:
+recreate the containers to apply the changes.
+opentelemetry java agent will be loaded into memory starting the container can take a bit more time, check
+for the health check properties:
+healthcheck.interval: 20s (increase to interval to check the health)
+healthcheck.retries: 20
+
+the very firt log statement in each MS will be this one:
+2025-11-19 00:45:44 Picked up JAVA_TOOL_OPTIONS: -javaagent:/app/libs/opentelemetry-javaagent-2.21.0.jar
+
+7. Check the traces in Grafana/Tempo datasource
+http://localhost:3000/explore
+select Loki datasource and run a query in a MS to search for traceId.
+select Tempo and paste the traceId and run the query.
+Grafana will show all the chain of calls to the MS, including the queries to the database, and how much time it took to execute each step.
+
+Add DerivedField on Lokis datasource to show the Tempo UI easily.
+This is done in the grafana/datasources.yml file:
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: "\\[.+,(.+),.+\\]"  // this regex matches the traceId inside [] see logging.pattern.level
+          name: TraceID
+          url: '$${__value.raw}'
+
+
+
+

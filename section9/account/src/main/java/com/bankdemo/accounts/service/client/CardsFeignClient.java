@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient("cards") // TODO step 7 cards is the name of the instance on the Eureka server
+@FeignClient("cards") // cards is the name of the instance on the Eureka server
 public interface CardsFeignClient {
      @GetMapping(value = "api/fetch", consumes = "application/json")
      ResponseEntity<CardsDto> fetchCardDetails(@RequestHeader("eazybank-correlation-id") String correlationId,
