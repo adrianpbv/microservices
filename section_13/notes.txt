@@ -1,0 +1,115 @@
+Section 12: Event Driven Microservices using RabbitMQ, Spring Cloud Functions & Spring Cloud Stream
+Driven architecture has the advantages of asynchronous communications where two MS doesn't need to wait for the response of the other, many scenarios work better with an async communication.
+
+Event-driven architectures can be built using two primary models:
+Publisher/Subscriber: (RabbitMQ) Producers generate events to all subscribers. Once an event is received, it cannot b e replayed, which means new subscribers joining later will not have access to past events.
+Event Streaming model: (Kafka) 
+* Events are written to a login a sequential manner. 
+* Producers publish events as they occur, and these events are stored in a well-ordered fashion.
+* Instead of subscribing to events, consumers have the ability to read from any part of the event stream. 
+* One advantage of this model is that events can be replayed, allowing clients to join at any time and receive all past events.
+
+
+Pub/Sub model picture:
+service1 -> event broker -> service2
+service2 -> event broker -> service1
+
+accountCreated -> send email -> an account was created send email (service2)
+email sent -> write confirmation > mark flag on db (service1)
+
+RabbitMQ is a message/event broker
+https://www.rabbitmq.com/tutorials
+
+Spring Cloud functions
+documentation: https://spring.io/projects/spring-cloud-function
+https://spring.io/projects/spring-cloud-function#learn
+see TODO steps: 1,2,3 to add dependencies and configure Spring Cloud Function in message MS
+
+Spring Cloud Stream
+https://spring.io/projects/spring-cloud-stream
+see TODO steps: 5,6,7 to add dependencies and configure Spring Cloud Stream and RabbitMQP in message MS
+
+see accounts MS to setup RabbitMQ and Spring Cloud Stream
+
+Spring Cloud Function can be used also as APIs is just to add the following properties:
+1. spring.cloud.function.definition=email|sms
+implementation("org.springframework.cloud:spring-cloud-function-context")
+implementation("org.springframework.cloud:spring-cloud-starter-function-web")
+2. The functions have the same name in MessageFunction#sms and MessageFunction#email
+3. call them POST http://localhost:9010/email pass in the body
+4. call them POST http://localhost:9010/sms pass in the body
+5. You can combine the call of the two functions by calling them POST http://localhost:9010/emailsms pass in the body
+
+Spring Cloud Stream
+1. see steps above to add deps and properties to Message and Account MS to set up the demo
+2. AccountsMsgDto is the data structure that will be used by producer and consumer
+
+Communication channels = destination bindings -> serve as connections between applications and brokers.
+We need to define input binding for each function accepting input data, and an output binding for
+each function returning output data. Name convention:
+bindingName = <functionName> + <BindingType> + <index> Ex: emailsms-in-0 -> the function email and sms accept input data
+index is always 0 unless it is used in Kafka for partitioning.
+emailsms-out-0 -> the function email and sms return output data
+
+The binding names exist only in Spring Cloud Stream and RabbitMQ doesn't know about them.
+
+We need to define destination which will be the exchange inside the RabbitMQ: send-communication and communication-sent
+spring.cloud.stream.bindings.emailsms-in-0.group=${spring.application.name}
+It is typically the application name, so that all the instances of the application can point to the same exchange and queue.
+The queues will be created inside RabbitMQ based on the queue-naming strategy:
+(‹destination>.<group>)
+
+3. Account MS will send events to the exchange: send-communication
+spring.cloud.stream.bindings.sendCommunication-out-0.destination=send-communication
+3.1 The StreamBridge can send events to the exchange
+4. Message MS will consume events from the exchange: send-communication
+spring.cloud.stream.bindings.sendEmail-in-0.destination=send-communication
+4.1 Define the function sendEmail to consume events.
+
+5. Message MS will push events to the exchange: communication-sent
+# message property:
+spring.cloud.stream.bindings.emailsms-out-0.destination=communication-sent
+5.1 Whatever the sms (last function) returns, it will be sent to the exchange communication-sent
+6. Account MS will consume events from the exchange: communication-sent
+spring.cloud.stream.bindings.updateCommunication-in-0.destination=communication-sent
+6.1 Define the function updateCommunication to consume events.
+
+7. Running the demo:
+Download the RabbitMQ docker image and run the command from documentation to start it, now it's:
+docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4-management
+7.1 Start config-server
+Start eureka-server
+Start accounts-service
+Start message-service
+Start gateway-server
+
+call api http://localhost:8072/eazybank/accounts/api/create
+accounts MS will send an event to send-communication exchange
+message MS will consume the event on the queue send-communication.message and sends an email & sms
+message MS will send an event to communication-sent exchange
+accounts MS will consume the event on the queue communication-sent.account and process the accountId that the email & sms were sent
+
+Check RabbitMQ management UI: http://localhost:15672/
+user: guest, password: guest
+* See queues and exchanges
+http://localhost:15672/#/exchanges
+communication-sent
+send-communication
+http://localhost:15672/#/queues
+communication-sent.account
+send-communication.message
+
+If you have more than one function you specify them separated by semicolons, example:
+spring.cloud.function.definition=updateCommunication;updateCommunication2
+updateCommunication and updateCommunication2 are independent, they will have their own queues and exchanges.
+
+8. Update docker-compose files
+8.1 Update to generate the image with Jib to use tag s13
+see TODO 13-16
+
+
+
+
+
+
+
