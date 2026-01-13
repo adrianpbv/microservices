@@ -1,0 +1,127 @@
+Section 12: Event Driven Microservices using Apache Kafka, Spring Cloud Functions & Spring Cloud Stream
+Driven architecture has the advantages of asynchronous communications where two MS doesn't need to wait for the response of the other, many scenarios work better with an async communication.
+
+Event-driven architectures can be built using two primary models:
+Publisher/Subscriber: (RabbitMQ) Producers generate events to all subscribers. Once an event is received, it cannot b e replayed, which means new subscribers joining later will not have access to past events.
+Event Streaming model: (Kafka) 
+* Events are written to a login a sequential manner. 
+* Producers publish events as they occur, and these events are stored in a well-ordered fashion.
+* Instead of subscribing to events, consumers have the ability to read from any part of the event stream. 
+* One advantage of this model is that events can be replayed, allowing clients to join at any time and receive all past events.
+
+Install Kafka using Docker
+https://kafka.apache.org/quickstart/#using-jvm-based-apache-kafka-docker-image
+* run it using port 9092
+
+To get Kafka working into to MS add
+In the gradle file of MS account and message:
+implementation("org.springframework.cloud:spring-cloud-stream-binder-kafka")
+* sync gradle
+In the application.properties file:
+spring.cloud.stream.kafka.binder.brokers=localhost:9092
+see todo 1 and 2
+
+See other configurations from previous section_13 about Spring Cloud Stream and Functions to setup the bindings in and out.
+
+install Kafka plugin in IntelliJ
+Test MS and Kafka:
+Start Kafka using docker
+Start config-server
+Start eureka-server
+Start accounts-service
+Start message-service
+Start gateway-server
+
+How to use Kafka in docker compose, doc:
+https://developer.confluent.io/confluent-tutorials/kafka-on-docker/
+
+Demo:
+call api http://localhost:8072/eazybank/accounts/api/create
+accounts MS will send an event to send-communication (topic or channel)
+message MS will consume the event on the queue send-communication.message and sends an email & sms
+message MS will send an event to communication-sent exchange
+accounts MS will consume the event on the queue communication-sent.account and process the accountId that the email & sms were sent
+
+# Kafka Components Explained
+
+Breaking down the Kafka components from your properties configuration:
+
+## 🔌 Broker
+
+```properties
+spring.cloud.stream.kafka.binder.brokers=localhost:9092
+```
+
+
+**The broker is `localhost:9092`**
+
+A Kafka broker is a server that:
+- Stores messages/events
+- Handles read/write requests from producers and consumers
+- Manages partitions and replication
+
+In this case, you have a single Kafka broker running locally on port 9092.
+
+---
+
+## 📬 Topics
+
+```properties
+spring.cloud.stream.bindings.emailsms-in-0.destination=send-communication
+spring.cloud.stream.bindings.emailsms-out-0.destination=communication-sent
+```
+
+
+**The topics are:**
+1. **`send-communication`** - Input topic (the message service consumes events from here)
+2. **`communication-sent`** - Output topic (the message service produces events to here)
+
+A Kafka topic is a category/feed name to which messages are published. Think of it as a "channel" for a specific type of event.
+
+---
+
+## 📦 Partitions
+
+**Partitions are not explicitly configured in these properties.**
+
+By default, Kafka will use its default partition settings (usually 1 partition per topic unless configured otherwise at the broker level or during topic creation).
+
+If you wanted to configure partitions, you could add something like:
+```properties
+spring.cloud.stream.kafka.binder.minPartitionCount=3
+```
+
+
+---
+
+## 👥 Consumer Group
+
+```properties
+spring.cloud.stream.bindings.emailsms-in-0.group=${spring.application.name}
+```
+
+**The consumer group is `message`** (resolved from `${spring.application.name}`)
+
+Consumer groups allow multiple instances of the same service to share the workload. Kafka ensures each message is delivered to only one consumer within the same group.
+
+---
+
+## Summary Table
+
+| Kafka Component | Value | Purpose |
+|-----------|-------|---------|
+| **Broker** | `localhost:9092` | Kafka server handling messages |
+| **Input Topic** | `send-communication` | Where `email\|sms` functions consume from |
+| **Output Topic** | `communication-sent` | Where processed messages are published |
+| **Consumer Group** | `message` | Identifies this service for load balancing |
+| **Partitions** | Default (not configured) | Message distribution within topics |
+
+
+
+
+
+
+
+
+
+
