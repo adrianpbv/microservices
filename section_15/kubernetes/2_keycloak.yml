@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels:
+    app: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.4.0
+          args: ["start-dev"] # means Kubernetes will start the container by running the image’s default ENTRYPOINT, and append start-dev as an argument.
+          env:
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: eazybank-configmap
+                  key: KC_BOOTSTRAP_ADMIN_USERNAME
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: eazybank-configmap
+                  key: KC_BOOTSTRAP_ADMIN_PASSWORD
+          ports:
+            - name: http
+              containerPort: 8080
+---
+# create a service Load Balancer to expose the Keycloak service
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  labels:
+    app: keycloak
+spec:
+  selector:
+    app: keycloak
+  type: LoadBalancer
+  ports:
+    - name: http
+      port: 7080 # port exposed by the service where the request will be sent from POSTMAN
+      targetPort: 8080 # port exposed by the container

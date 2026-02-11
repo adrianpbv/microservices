@@ -1,0 +1,173 @@
+Section 15 Kubernetes is an open-source container orchestration platform that automates the
+deployment, scaling, and management of containerized applications.
+
+Test locally Kubernete using Docker desktop.
+Documentation: https://docs.docker.com/desktop/use-desktop/kubernetes/
+1. Enable it in the dockerDesktop/settings.
+
+Commands:
+kubectl version
+kubectl config get-contexts
+kubectl get nodes
+
+2. Setup K8s UI:
+https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/
+
+2.1 Install Helm to deploy K8s' UI
+https://helm.sh/docs/intro/install#through-package-managers
+$ brew install helm
+$ helm version
+
+2.2
+$ helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+# Add kubernetes-dashboard repository
+$ helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+# Deploy a Helm Release named "kubernetes-dashboard" using the kubernetes-dashboard chart
+$ helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
+$ kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard-kong-proxy 8443:443
+
+2.3 Access the UI
+https://localhost:8443
+2.3.1 Create a Service Account (User credentials to access)
+https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md
+create the file with the service account and add it to K8s
+$ kubectl apply -f dashboard-adminuser.yaml 
+2.3.2 Create the Role and assign it to the serv.Account
+$ kubectl apply -f dashboard-rolebinding.yaml
+2.3.3 Create token
+$ kubectl -n kubernetes-dashboard create token admin-user
+Copy and paste the Bearer Token
+2.3.4 Make the Authentication a Secret. Token is saved in a Secret.
+$ kubectl apply -f secret.yaml 
+2.3.4.1 to get the token
+$ kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath="{.data.token}" | base64 -d
+Do not copy the last character which is a percent symbol (%)
+
+3. Deploying config-server on local cubernetes cluster:
+See how to write the configuration yml file
+https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+
+3.1 Apply the config file. Go to the directory it's located
+$ kubectl apply -f config-server.yml
+it will create the deployment and service on the file. the api is alive!
+Check they were created with:
+$ kubectl get deployments
+$ kubectl get services -> It shows the port it's listening external requests  8071:31733/TCP . Make requests (from Postman) to the port 8071. ExternalIp is where the service is listening 'localhost' in this case
+$ kubectl get replicaset
+$ kubectl get pods
+See K8s commands on the GitHub repo Readme file: https://github.com/eazybytes/microservices?tab=readme-ov-file#kubernetes-commands-used-in-the-course
+
+Test: Get http://localhost:8071/accounts/prod
+Get http://localhost:8071/loans/prod
+
+3.1.2 Check on the Kubernetes dashboard the deployment of the config-server
+Select the default namespace
+http://localhost:8443/#/workloads?namespace=default
+Check the Workload Section > Deployments, Pods, Replica Sets.
+PODs:
+To Check the logs of a MS go to Pods, click on the name 'configserver-deployment-randomchars' > then click on the menu option at the top right ||| to see the logs of the microservice (MS).
+On the Replica Set section you can see which pod, service are running.
+
+4. Set up ConfigMap object to create environment variables
+Doc: https://kubernetes.io/docs/concepts/configuration/configmap/
+see the file 1_configmaps.yml
+$ kubectl apply -f 1_configmaps.yml
+see the config maps are created in the kubernetes UI:
+https://localhost:8443/#/configmap/default/eazybank-configmap?namespace=default
+
+5. add the keycloak K8 config file. 
+See how the environment variable are injected into the containers
+
+6. apply the K8 config files for each microservice to create the container and start them as a Service.
+kubectl apply -f 2_keycloak.yml
+kubectl apply -f 3_configserver.yml
+kubectl apply -f 4_eurekaserver.yml
+kubectl apply -f 5_accounts.yml
+...
+Kubernetes doesn't have a way to start the container like docker compose does with health checks and depends on
+
+Check all deployments are created in the Deployment section in the K8 dashboard or run the command to get them.
+
+Get the access token from Keycloak and then in postman:
+see lecture 230 at the half of the video
+create the client eazybank-callcenter-cc > enable client auth > on Authentication flow enable only Service account role. Disable everything else> Save client.
+create Realm Roles (ACCOUNTS, CARDS, LOANS).
+go to client and assign the realm roles created to the created client.
+Copy the client secret to get the token auth in Postman.
+
+Create an account, card and a loan. at last get the all the data at the endpoint:
+curl --location 'http://localhost:8072/eazybank/accounts/api/fetchCustomerDetails?mobileNumber=4354437688'
+and verify that all services are working in Kubernetes and they are able to connect with each other :)
+
+7. Test Kubernetes self healing
+Update the accounts.yml Kubernetes config file to have 2 replicas and apply it with the command.
+spec:
+  replicas: 2
+This will make K8s to maintain 2 replicas working of the account container.
+Commands:
+kubectl get replicaset # check the desired config about the container
+kubectl get pods # before updating the replica to 2 there is one pod for each Microservice
+kubectl apply -f 5_accounts.yml
+kubectl get pods # check account will have now 2 pods
+kubectl delete pod accounts-deployment-858bf48958-h4j5z # this delete a pod. k8s will create a new one instanly
+kubectl get pods # check the new pod is created to have 2 pods or replica as specified in the config file.
+kubectl get events --sort-by=.metadata.creationTimestamp # see the events sorted. when a pod was deleted and new one created.
+
+Question here is how K8s realizes the pod is not healty and it decides to create a new one? In docker compose there is a health command. I don't know in K8s.
+
+8. Deploying to a Kubernetes cluster without downtime, if your face any issue you can rollback to previous state without manual effort.
+kubectl scale deployment accounts-deployment --replicas=1 # similarly to the config file and aplying it, this will set the account deployment replica to 1.
+kubectl describe pod pod-id # shows data about the pod like the docker image it used to create the pod.
+kubectl set image deployment gatewayserver-deployment gatewayserver=eazybytes/gatewayserver:s11 --record # update using this command the pod's docker image. s11 doesn't have the security layer of keycloak. if the image doesn't exist or there is any issue with it K8s wont remove the previous pod.
+kubectl get events --sort-by=.metadata.creationTimestamp # see the event of K8s pulling the image and scaling it up.
+kubectl rollout history deployment gatewayserver-deployment # see the revision history to rollback 
+kubectl rollout undo deployment gatewayserver-deployment --to-revision=1 # specify the revision to rollback
+
+Kubernetes is capable of autoscaling the container automatically based upon some defined requirements. See documentation:
+https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/
+to autoscale for example based on CPU or memory usage.
+
+9. Update service type to ClusterIP to not expose other MS than the edge MS (gateway-server)
+ClusterIP # Kubernetes has a load balancer and it send the request to the right working node where the MS is.
+LoadBalancer # Kubernetes exposes the service to an IP and port. Ex:  localhost 8080:32124/TCP -> IP is localhost and listening external call through 8080 and the node has the port 32124 which can change when pods get recreated
+NodePort # not recommended, it's to expose the working node directly which can change and the client need to have the updated port.
+Command:
+kubectl get services # to see the services
+
+10. Use Helm to manage the deployments in Kubernetes. Every MS will have a config file and for different env, thats why we need Helm.
+kubectl delete -f 5_accounts.yml # this will delete the deployment of accounts from Kubernetes. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
