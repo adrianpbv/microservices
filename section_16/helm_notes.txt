@@ -1,0 +1,276 @@
+Section 16 Helm
+ Helm is a package manager for Kubernetes. It helps to automate the installation, rollback, upgrade of the
+multiple K8s manifests with a single command.
+ A chart is a collection of files that describe a related set of Kubernetes resources.
+ A single Helm chart might b e used to deploy a simple app o r something complex like a
+full web app stack with HTTP servers, databases, caches, and so on.
+ A chart can have child charts and dependent charts as well. This means that Helm can install whole dependency tree of
+a project with just a single command.
+
+1. Installing helm. read the quickstart guide to now the Prerequisites
+https://helm.sh/docs/intro/quickstart
+1.1 Install with homebrew in Mac
+brew install helm
+
+2. Installing a Helm chart
+Make sure Kubernetes is running in the docker console
+Check step 2 on kubernetes_note.txt. Redirect the traffic to the Kubernetes port using this command:
+kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard-kong-proxy 8443:443
+$ helm ls
+2.1 Documentation:
+https://helm.sh/docs/intro/using_helm
+See the command to find a chart, repos
+When a chart is installed all the kubernetes manifest files are loaded to launch the application. a chart is like a
+package which contains all the resource dependencies to run an app or tool.
+$ helm env # show the helm's environment variables
+the manifest will be in the patn ~/Library/Caches/helm
+
+3. Creating Helm chart
+$ helm create <chart_name> # this command create a chart with the required folder and files.
+Delete all the templates files and values.yml's content.
+
+4. Start by updating the templates files
+Declare the env  variables in the configmap.yml files
+Similarly to the kubernetes files created for the previous section create a helm template file for the deployments and
+services where placeholders are used to inyect the values declared in the value.yml file
+
+5. Create the account chart
+$ cd eazybank-services/account
+$ helm create account
+Update the chart.yaml file to add the dependency of eazybank-common chart
+See the template which make reference to the common chart's templates files.
+Update the values.yml file to add the values for the account chart.
+$ helm dependency build # compiles the account's chart, it will add also account's chart dependencies like eazybank-common
+ chart.
+
+ 6. Add the other MServices charts
+See the values.yaml file of each MS chart
+# values.yaml
+appname_enabled: true
+profile_enabled: true  # will be false for example for config-server
+config_enabled: true  # false for config-server
+eureka_enabled: true # false for eureka-server
+resouceserver_enabled: false # this is related to the auth-server (Keycloak). Only true for gateway-server
+otel_enabled: true # opentelemetry var. to send the logs to Grafana. Only false for message-server which is in charge of interacting with Kafka
+kafka_enabled: false # true for account and message servers which use kafka
+
+7. Create a helm chart for each profile: prod, dev, qa
+$ mkdir prod-env # create a folder for prod env
+$ helm create prod-env
+Update the Chart.yaml file to have specific property values for each profile.
+Example:
+name: prod-env
+appVersion: "1.0.0"
+# add the chart dependencies.
+* Update the values.yaml file to add the values for the prod-env chart and the other profiles.
+These values are on the docker-compose.yml file.
+Example of the prod values.yaml file:
+global:
+  configMapName: eazybankprod-configmap
+  activeProfile: prod # update this depending on the profile e.g  if your on the dev-env chart this value is dev
+  configServerURL: configserver:http://configserver:8071/
+  eurekaServerURL: http://eurekaserver:8070/eureka/
+  keyCloakURL: http://keycloak.default.svc.cluster.local:80/realms/master/protocol/openid-connect/certs
+  openTelemetryJavaAgent: "-javaagent:/app/libs/opentelemetry-javaagent-2.22.0.jar"
+  otelExporterEndPoint: http://tempo.default.svc.cluster.local:4318
+  otelMetricsExporter: none
+  otelLogsExporter: none
+  kafkaBrokerURL: kafka-controller-0.kafka-controller-headless.default.svc.cluster.local:9092
+
+The values from the prod-env/values.yaml file are used for example in the eazybank-common/templates/configmap.yaml,
+deploymemt.yaml, service.yaml file to setup the services in Kubernetes. example of usuage in configmap.yaml:
+data:
+  SPRING_PROFILES_ACTIVE: {{ .Values.global.activeProfile }} # prod in case of prod-env chart
+
+ 7.1 Once each profile chart is created, make sure to build the dependencies for each MService chart.
+ Go to eazybank-services/account folder and run
+ $ helm dependency build # do the same with the other charts at eazybank-services folder (cards, config-server, loans...)
+
+ 7.2 Once each profile chart is built:
+ $ cd prod-env
+ $ helm dependencies build # build this chart and all the dependent charts will be added on the chart folder
+
+7.3 Run the command below at environment/prod-env/
+$ helm template . # is very useful to see the manifest files generated by helm with the values declared
+
+8. Install other application from a known chart repository. You can download the chart folder and install it locally.
+$ helm install <name of the chart> <folder_path>
+$ helm install keycloak keycloak # currently at the folder helm/ which contains the folder keycloak
+
+9. When uninstalling a chart run below command if there is Pesisten Volumen Claim (PVC), they should be deleted manually:
+$ helm uninstall <chart_or_release_name>
+$ kubectl get pvc
+$ kubectl delete pvc <pvc_name>
+
+10. Install Kafka chart
+$ cd helm
+$ helm install kafka kafka
+$ helm status kafka # see the pod and service name to use it in prod-env/values.yaml file
+<pod-name>.<headless-service-name>.default.svc.cluster.local:9092
+kafka-controller-0.kafka-controller-headless.default.svc.cluster.local:9092
+
+11. Install Prometheus chart so it can get all the metrics from the MS
+$ helm install kube-prometheus kube-prometheus
+Check the values.yaml file:
+additionalScrapings:
+ enabled: true
+ type: internal  # type internal to scrap metrics internally in the cluster
+ jobList: [ {} ] # add the MS endpoints to scrape = scrape_configs
+scrape_configs: # see kube-prometheus/configmap.yaml
+ job_name: 'accounts'
+         metrics_path: '/actuator/prometheus'
+         static_configs:
+           - targets: ['accounts.default.svc.cluster.local:8080']
+
+Check the status of the targets:
+http://localhost:9090/targets
+
+12. Install Grafana Loki & Tempo in Kubernetes Cluster using Helm Charts
+12.1 Install Grafana Loki
+Loki and Tempo are components of Grafana.
+Loki is responsible to aggregate all the logs that are generated by the individual microservices.
+Tempo stores and lets you query TRACES —the end-to-end record of a single request as it flows through multiple services.
+$ helm install loki grafana-loki # loki is the name of the release locally, grafana-loki is the folder and the name of the chart
+$ helm status loki
+
+On Grafana Tempo check the configuration for otlp (Open Telemetry config) in values.yaml file:
+distributor:
+        receivers:
+          otlp:
+            protocols:
+              grpc:
+                endpoint: 0.0.0.0:4317
+              http:
+                endpoint: 0.0.0.0:4318
+
+12.1 Install Grafana Tempo
+$ cd helm
+$ helm install tempo grafana-tempo
+
+The MS open telemtry will send the traces at this url:
+otelExporterEndPoint: http://tempo.default.svc.cluster.local:4318
+
+with this command you can get the services available in the cluster to get the ip and tcp port:
+default local url is tempo.default.svc.cluster.local for the default namespace.
+kubectl get services
+
+12.2 Install Grafana Alloy
+Grafana Alloy agent reads pod/container logs from Kubernetes and pushes them to Loki.
+$ cd helm
+$ helm install alloy grafana-alloy
+$ helm status alloy
+
+check logs from any kubernetes pod:
+$ kubectl get pods # find the pod name
+$ kubectl logs <pod_name>
+
+
+13. Install Grafana
+$ cd helm
+$ helm install grafana grafana
+$ helm status grafana
+
+# Make sure to add the prometheus, loki and tempo datasource in Grafana's values.yaml file:
+datasources:
+  prometheus:
+    url: http://kube-prometheus.default.svc.cluster.local:9090
+  tempo:
+    url: http://tempo.default.svc.cluster.local:3100
+  loki:
+    url: http://loki-gateway.default.svc.cluster.local
+# also the service type and port:
+service:
+  type: LoadBalancer
+  port: 3000
+
+ You will be able to access Grafana at http://localhost:3000/
+ http://localhost:3000/connections/datasources
+
+ Check also the Loki config in Grafana to get the Trace, see configmap.yaml file.
+ jsonData:
+           derivedFields:
+             - datasourceUid: tempo
+               matcherRegex: "\\[.+,(.+),.+\\]"
+               name: TraceID
+               url: '$${__value.raw}'
+
+ 14. Install the microservices in Kubernetes Cluster
+$ cd section_16/helm/environment
+$ helm install eazybank prod-env
+
+Kubernetes will start the MS in any order. There can be failure as some MS depend on other MS, like account depends on
+the config-server.
+K8s will wait some time to restart the MS
+Check the log on the POD to know if the MS is up and running.
+
+https://localhost:8443/#/pod?namespace=default
+
+$ kubectl cluster-info
+$ kubectl -n kubernetes-dashboard get pods
+This forward the traffic to this port using this command to access the Kubernetes Dashboard:
+$ kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard-kong-proxy 8443:443
+
+Create an account to verify the MS are up and running.
+
+Go to Grafana > Explore > Loki >
+Select Label "container" value "accounts"
+Select a log and you should see Tempo
+
+Test Prometheus > Select a metric > "up" , label "container" value "accounts" update time frame
+Verify the Graph is shown with the metric
+
+how the MS, Prometheus, and Grafana are connected:
+1. Each MS has the Open Telemetry for tracing with Tempo and Micrometer for metrics with Prometheus.
+2. Setup each MS, see the common templates files they use variable specified in environment folder
+3. environment folder contains the different profiles and values of the env variables.
+Start the MS and test the work from Kubernetes Cluster. See step 7 you can test and endpoint without auth
+4. Prometheus is set up on its values file, the jobs scrape the metrics from the MS.
+5. Tempo will wave the Traces from the MS. The env var otelExporterEndPoint contains the url to send the traces.
+  otelMetricsExporter: none # its an Open Telemetry config. Deactivated as Micrometer is used for metrics
+  otelLogsExporter: none # its an Open Telemetry config. Deactivated as Loki is used for logs
+6. Active Alloy and Loki as they work together. Loki is used to store the logs and Alloy is used to send the logs to Loki.
+7. Start Grafana
+8. Play
+
+15. How to make changes on the env var of the MS or the configs in K8s like increasing the # of replicas.
+Use Helm to make changes on the MS and K8s settings.
+e.g of modification got to eazybank-services/gatewayserver/values.yaml file:
+ * update the docker tag to S11 which doesn't have security set
+ * increase the gateway's number of replicas.
+$ helm status eazybank
+$ cd prod-env
+$ helm dependencies build
+$ cd .. # go back to the root folder environment/ where the prod-env/ is located
+$ helm upgrade eazybank prod-env # eazybank is the release name and prod-env where the chart is. the revision number will be increased
+
+16. How to rollback changes using Helm
+it is going to rollback your entire Kubernetes cluster components to the previous desired state.
+$ helm history eazybank
+$ helm rollback eazybank <revision_number>
+$ helm rollback eazybank 1
+* check the pod's event to see how the gateway server is rolled back to previous docker tag
+$ helm history eazybank # see history of the deployments for a particular release
+
+17. How to uninstall all the MS using a Helm command
+$ helm uninstall <release_name> # uninstall the release
+$ helm ls # list all the releases. The NAME column is the release name
+$ helm uninstall <release_name>
+$ helm uninstall eazybank # uninstall the release with all the MS
+* Make sure to delete the Grafana's Persistent Volume Claims (PVC) manually to avoid issue when reinstalling the helm chart again.
+
+18. Review useful Helm commands page 213.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
