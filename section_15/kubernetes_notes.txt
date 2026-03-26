@@ -137,6 +137,7 @@ kubectl get services # to see the services
 10. Use Helm to manage the deployments in Kubernetes. Every MS will have a config file and for different env, thats why we need Helm.
 kubectl delete -f 5_accounts.yml # this will delete the deployment and service (anything in the config file) of accounts from Kubernetes.
 
+kubectl delete service keycloak -n default
 
 
 

@@ -1,0 +1,124 @@
+Section 17. Server-side discovery and load balancing using Kubernetes
+1. Introduction
+So far i'm using Server-side discovery and load balancing using client side discovery with Eureka server.
+
+1.1 Client-side Service Discovery (e.g., using Eureka Server):
+
+Advantages:
+
+Offers control over load balancing strategies since the client chooses which instance to communicate with.
+Can be more transparent in how requests are routed.
+
+Disadvantages:
+
+Requires manual maintenance of the Eureka Server.
+Developers need to configure each microservice to connect to the Eureka Server, increasing overhead.
+
+1.2 Server-side Service Discovery (e.g., using Kubernetes):
+
+Advantages:
+
+Reduced developer overhead since microservices do not need to register themselves manually and send future heartbeats.
+Simplified configurations, allowing microservices to send requests directly using service names.
+Load balancing is managed automatically within the Kubernetes cluster, enabling developers to focus on application logic.
+
+Disadvantages:
+
+Less control over load balancing strategies, which are determined by the Kubernetes cluster.
+
+1.3 Both service discovery approaches have their pros and cons, and the choice should depend on specific business needs.
+1.4 See slide from page 215 for details about how the Service Discovery and Load Balancing works using Kubernetes:
+The K8s discovery server is responsible to monitor the application instances and maintaining the details of them.
+When a microservice needs to communicate with a backing service, it simply invokes the service URL exposed by the K8s' service.
+The K8s Service will take care of loadbalancing the requests at the server layer. So clients are free from load balancing in this scenario.
+
+2. Spring Cloud Kubernetes
+https://spring.io/projects/spring-cloud-kubernetes
+Blog about k8s and spring cloud, settings for spring service discovery and load balancing project.
+https://spring.io/blog/2021/10/26/new-features-for-spring-cloud-kubernetes-in-spring-cloud-2021-0-0-m3
+Image in Docker Hub, search for latest STABLE version:
+https://hub.docker.com/r/springcloud/spring-cloud-kubernetes-discoveryserver/tags?page=2
+
+Copy the configuration from the blog add the props to delay the container health check at the beginning of the application startup:
+# initialDelaySeconds: 100
+# periodSeconds: 30 # this is how often the health check is performed by kubernetes
+
+3. Install the Spring Cloud Kubernetes Discovery Server in Kubernetes
+$ kubectl apply -f kubernetes-discoveryserver.yaml
+
+4. Update the build.gradle.kts file to use the Spring Kubernetes Discovery Server.
+E.g: accounts MS, build.gradle.kts:
+dependencies {
+	implementation("org.springframework.cloud:spring-cloud-starter-kubernetes-discoveryclient")
+}
+TODO 1
+
+5. In accounts application class add the annotation:
+@SpringBootApplication
+@EnableDiscoveryClient # this
+class AccountsApplication
+TODO 2
+
+6. Go to the accounts's application.properties file
+Delete the properties related to eureka to replace to the cloud properties:
+cloud.kubernetes.discovery.all-namespaces=true # for now we are using one namespace called kubernetes which is the default
+TODO 3
+
+7. Udate the FeignClient to add the url of the other MS.
+E.g: CardsFeignClient.java:
+@FeignClient(name = "cards",url = "http://cards:9000", fallback=CardsFallback.class)
+TODO 4 and 5
+
+The feign client will not perform any load balancing, it will simply forward the request to url inside the
+k8s cluster, outside K8s use loalchost
+
+8. Repeat TODO 1, 2, 3 in cards, loans, and gateway-server applications.
+9. In the gateway-server application update the uri path to MS's path in Kubernetes
+E.g:
+@SpringBootApplication
+@EnableDiscoveryClient
+public class GatewayserverApplication { ...
+@Bean
+	public RouteLocator eazyBankRouteConfig(RouteLocatorBuilder routeLocatorBuilder) {
+		return routeLocatorBuilder.routes()
+						.route(p -> p
+								.path("/eazybank/accounts/**")
+								.filters(..)
+								.uri("http://accounts:8080")) // with Eureka it was lb://accounts # lb -> load balancer
+						...
+						.uri("http://loans:8090");
+
+10. Generate the docker images for the MS
+11. Use helm to deploy the images in the k8s cluster
+11.1 Copy helm folder from previous section and remove the values related to Eureka
+env/prod/Chart.yaml:
+11.2 To test the lb update the accounts ms the number of replicaCounts
+eazybank-service/accounts
+values.yaml:
+replicaCount: 2
+image:
+  repository: eazybytes/accounts
+  tag: s17 # update the tag to s17 current section
+discovery_enabled: true # update this to the other MS as well
+
+11.3 Add discovery service url for the ms. This is used by the config on step 13.
+helm/environment/prod-env/values.yaml:
+  discoveryServerURL: "http://spring-cloud-kubernetes-discoveryserver:80/" # replaces the Eureka setting
+
+12. Add discovery service url for the ms
+helm/eazybank-common/templates/configmap.yaml:
+SPRING.CLOUD.KUBERNETES.DISCOVERY.DISCOVERY-SERVER-URL: {{ .Values.global.discoveryServerURL }} // replacing the Eureka url
+
+12.1 helm/eazybank-common/templates/deployment.yaml:
+        {{- if .Values.discovery_enabled }}
+        - name: SPRING.CLOUD.KUBERNETES.DISCOVERY.DISCOVERY-SERVER-URL
+
+13. Build the helm chart
+$ cd environments/prod-env/
+$ helm dependency build   # delete the Chart.lock becuase Eureka service is not used on this section
+$ cd environments # or cd ..
+$ helm install eazybank-services prod-env # eazybank-services is the name of the release, it will install all chart inside prod-env folder
+$ helm template . # verify the helm chart installation is good
+
+14. Test the lb by calling the accounts/create service using the gateway-server several times
+
