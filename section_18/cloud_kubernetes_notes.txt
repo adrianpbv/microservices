@@ -1,0 +1,109 @@
+Section 18 Deploying microservices into a cloud Kubernets Cluster
+1. Go to cloud.google.com and create a new proyect.
+Enable the Google Cloud SDK to communicate locally with the cloud, install the CLI tool:
+https://cloud.google.com/sdk
+Once installed run this to verify it's running
+gcloud --version
+gcloud init # login into your account and allow access to the project
+
+2. Create a Kubernetes Cluster 
+Enable Kubernetes Engine
+Create a Standard Cluster: https://console.cloud.google.com/kubernetes/add
+
+The K8s is created in the cloud with other node that allows Google to collect metrics about the cluster
+
+Kubernetes Engine Dashboard
+https://console.cloud.google.com/kubernetes/overview/get-starte
+
+3. Connect to the k8s cluster locally
+
+3.1 Kubernetes Engine > Clusters > Overview > Select option (3 dots) > Connect > Copy the command
+Looks like this:
+$ gcloud container clusters get-credentials cluser-name --zone us-central --project project-name
+Run the command to connect locally to cloud k8s cluster.
+$ kubectl get nodes # you should get the node that are running in the cloud
+Once connected you can proced to install the Components of the MS.
+
+3.2 Install the same components like in previous section_17
+$ cd section_17
+$ kubectl apply -f kubernetes-discoveryserver.yml # this service will perform the service discovery and load balancing with kubernetes where the client services doesn't need to send hearbeats
+
+3.3 Install the components using helm
+$ cd section-17/helm
+$ helm install keycloak keycloak
+$ helm install kafka kafka
+$ helm install prometheus kube-prometheus
+$ helm install loki grafana-loki
+$ helm install tempo grafana-tempo
+$ helm install allooy grafana-alloy
+$ helm install grafana grafana
+$ cd helm/environments
+$ helm install eazybank prod-env
+
+-- wait some time for the installations to complete
+installing the k8s components in the cloud will have more capacity than installing it locally 
+
+4. Check installation was success for all components
+Connected to the cloud cluster
+$ kubectl get pods # check keycloak, grafana etc 
+
+5. Get the gatewayserver url
+search the gateway's pod name
+$ kubectl describe pod <gatewayserver-pod-name>
+check the Node: <ID>
+you can use this id to look for it in the cloud and check its status
+
+
+Workloads = Deployment
+
+6. Test MS
+Services & Ingress # get the gatewayserver and keycloak public ip
+With the IP of keycloak access it and create a new roles to access the resources in the MS
+With the IP of the MS verify they are working as expected, call the api to get javaversion and to create an account
+
+7. Test Grafana
+7.1 ClusterIP. In the config it's setup a ClusterIp service meaning you can access it locally by forwarding the requests to a local port
+When installing the helm grafana chart you should get details about how to forward the request and how to login
+locally and connected to the cloud cluster run the commands to forward grafana request and to get credentials to login
+$ kubectl port-forward svc/grafana 8080:3000
+
+7.2 Make the k8 service as LoadBalancer to have a public IP
+
+7.3 Access Grafana UI and login and verify Loki and Prometheus metrics
+
+8. Unistall all helm releases
+$ cd environments/
+$ helm uninstall eazybank
+$ helm uninstall grafana
+$ helm uninstall tempo
+$ helm uninstall loki
+$ helm uninstall alloy
+$ helm uninstall prometheus
+$ helm uninstall kafka
+$ helm uninstall keycloak
+$ helm ls # at this point there shoul not be any helm chart installed 
+$ cd section_17/kubernetes
+$ kubectl delete -f kubernetes-discoveryserver.yml
+
+8.1 Very all components are deleted in the cloud
+8.2 Delete clouster
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
