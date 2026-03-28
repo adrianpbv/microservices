@@ -46,6 +46,8 @@ Copy the configuration from the blog add the props to delay the container health
 3. Install the Spring Cloud Kubernetes Discovery Server in Kubernetes
 $ kubectl apply -f kubernetes-discoveryserver.yaml
 
+This project is a Spring Boot application created/"maintained" (check) by Spring Cloud to perform the load balancing in a K8s cluster
+
 4. Update the build.gradle.kts file to use the Spring Kubernetes Discovery Server.
 E.g: accounts MS, build.gradle.kts:
 dependencies {
