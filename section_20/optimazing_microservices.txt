@@ -1,0 +1,5 @@
+section 20. Optimazing Microservices
+1. include as dependecy manager a BOM (bill of materials) project.
+BOM is a dependency management mechanism that provides a central place to define the versions of dependencies (and their transitivedependencies). 
+Advantages:
+manage versions centrally in one place, 
