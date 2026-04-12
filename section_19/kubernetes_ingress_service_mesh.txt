@@ -1,0 +1,97 @@
+Section 18 Kubernetes Ingress & Service Mesh
+
+Documentation
+https://kubernetes.io/docs/concepts/
+https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+
+Page 217 What is an Ingress?
+
+1. Kubernetes Service type of ExternalName
+https://kubernetes.io/docs/concepts/services-networking/service/#externalname
+Service type: "External Name" maps services to an organization's DNS name
+
+2. K8s Ingress
+https://kubernetes.io/docs/concepts/services-networking/ingress/
+LoadBalancer and Ingress have similar functions but they are distinct concepts.
+Difference. See page 220.
+LoadBalancer services expose individual services with separate public IPs, and Ingress serves as
+ a single entry point for routing requests to multiple services.
+
+Key capabilities of Ingress include HTTP and HTTPS routing, load balancing, SSL/TLS termination,
+and name-based virtual hosting. It can also handle authentication and authorization through integrations with tools like Keycloak or Okta.
+
+2.1 An Ingress Controller is needed to make Ingress resources functional. Like NGINX controller.
+
+3. Service Mesh
+It acts as a proxy between the client and the service. (Sidecar)
+https://istio.io/
+
+A service mesh has a crucial role in managing service-to-service traffic within Kubernetes clusters.
+It differentiates between north-south traffic, managed by ingress controllers, and east-west traffic, which
+involves communication between microservices within the cluster.
+
+A service mesh acts as a dedicated infrastructure layer that ensures reliable communication among microservices,
+offering features like security, observability, and reliability for east-west traffic. It creates a firewall-like
+environment by not exposing internal microservices to the outside world, which enhances security.
+
+Using a service mesh allows developers to separate business logic from non-functional requirements, simplifying
+the development process. By adopting the sidecar proxy pattern, where a sidecar container accompanies each microservice,
+developers can leverage various technologies without compromising the separation of concerns. Example of sidecar container is Istio.
+https://istio.io/latest/about/service-mesh/
+see page 224
+
+4. Service Mesh components see page 225
+
+5. Communication between services within the MS in the cluster should be using mTLS.
+mTLS comes into picture when both parties have to authenticate themselves.
+Normally the browser communicates with a server over HTTPS using Transport Layer Security (TLS), it facilitates a secure
+communication. The server nees to verify the identity of the client.
+
+mTLS i s often used in a Zero Trust security framework to verify users, devices, and servers within an
+organization. It can also help keep APls secure.
+*Zero Trust means that no user, device, or network traffic is trusted by default, an approach that helps
+eliminate many security vulnerabilities.
+
+5. See how TSL works with the Certificates page 227
+Client (Browser) Server Certificate Authentication (CA)
+1. Server as For a certificate that sends to the client.
+2. Client verifies the server's certificate with the CA
+3. Post that the client can communicate with the server using TLS.
+
+Comunication using TLS, see page 228
+1. Server has a public and private keys.
+2. Client sends a session key encrypted with the public key to the server.
+3. Server decrypts the session key with the private key.
+4. Both parties can now communicate securely encrypting the data using the session key.
+5. This is a Symetric encryption where both parties have the same key to encrypt and decrypt.
+
+6. Mutual Transport Layer Security (mTLS)
+See page 230 to see how it works.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
