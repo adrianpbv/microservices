@@ -3,7 +3,7 @@ package com.bankdemo.accounts.controller;
 import com.bankdemo.accounts.config.AccountsContactInfoDto;
 import com.bankdemo.accounts.constants.AccountsConstants;
 import com.bankdemo.accounts.dto.CustomerDto;
-import com.bankdemo.accounts.dto.ErrorResponseDto;
+import com.bankdemo.common.dto.ErrorResponseDto;
 import com.bankdemo.accounts.dto.ResponseDto;
 import com.bankdemo.accounts.service.IAccountsService;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;

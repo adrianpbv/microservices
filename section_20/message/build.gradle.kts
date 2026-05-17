@@ -1,8 +1,8 @@
 plugins {
     java
-    id("org.springframework.boot") version "4.0.0"
-    id("io.spring.dependency-management") version "1.1.7"
-    id("com.google.cloud.tools.jib") version "3.4.5"
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.jib) // Gradle automatically generates type-safe accessors from your libs.versions.toml file. The plugin IDs defined under [plugins]
 }
 
 group = "com.bankdemo"
@@ -11,7 +11,7 @@ description = "message"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(libs.versions.java.get().toInt())
     }
 }
 
@@ -25,15 +25,13 @@ repositories {
     mavenCentral()
 }
 
-extra["springCloudVersion"] = "2025.1.0"
-
 jib {
     dockerClient {
         executable = "/usr/local/bin/docker"
     }
     to {
         // run the command: $ ./gradlew jibDockerBuild
-        image = "adrianjpbv/${project.name}:s14" // image name will be adrianjpbv/accounts:s8
+        image = "adrianjpbv/${project.name}:s20" // image name will be adrianjpbv/accounts:s8
         auth {
             username = System.getenv("DOCKER_USERNAME") ?: project.findProperty("docker.username") as String?
             password = System.getenv("DOCKER_PASSWORD") ?: project.findProperty("docker.password") as String?
@@ -42,16 +40,18 @@ jib {
 }
 
 dependencies {
+    implementation(platform("com.bankdemo:eazy-bom:1.0"))
     // Spring Boot
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.springframework.cloud:spring-cloud-stream")
-    // TODO 1 Kafka
+
+    // Kafka
     implementation("org.springframework.cloud:spring-cloud-stream-binder-kafka")
 
     // Lombok
-    compileOnly("org.projectlombok:lombok")
-    annotationProcessor("org.projectlombok:lombok")
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
 
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -62,7 +62,7 @@ dependencies {
 
 dependencyManagement {
     imports {
-        mavenBom("org.springframework.cloud:spring-cloud-dependencies:${property("springCloudVersion")}")
+        mavenBom("org.springframework.cloud:spring-cloud-dependencies:${libs.versions.springCloudVersion.get()}")
     }
 }
 

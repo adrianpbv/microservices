@@ -1,0 +1,52 @@
+# on this docker-compose file we will have two microservices: accounts and configserver.
+# test the image is created successfully with jib
+services:
+  configserver:
+    image: "adrianjpbv/config-server:s20"
+    container_name: configserver-ms
+    ports:
+      - "8071:8071"
+    env_file:
+      - .env
+    environment:
+      GIT_CONFIG_SERVER: ${GIT_CONFIG_SERVER}
+      OTEL_SERVICE_NAME: "configserver"
+    healthcheck:
+      test: "curl --fail --silent localhost:8071/actuator/health | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    extends:
+      file: common-config.yml
+      service: microservice-base-config
+
+  accounts:
+    image: "adrianjpbv/accounts:s20"
+    container_name: accounts-ms
+    ports:
+      - "8080:8080"
+    depends_on:
+      configserver:
+        condition: service_healthy
+#      eurekaserver:
+#        condition: service_healthy
+#     TODO accounts-ms depends on kafka
+    healthcheck:
+      test: "curl --fail --silent localhost:8080/actuator/health/readiness | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    environment:
+      SPRING_APPLICATION_NAME: "accounts"
+      OTEL_SERVICE_NAME: "accounts"
+#      TODO add Kafka env variable in accounts
+      SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: "kafka:9092"
+    extends:
+      file: common-config.yml
+      service: microservice-eureka-config
+
+networks:
+  eazybank:
+    driver: "bridge"

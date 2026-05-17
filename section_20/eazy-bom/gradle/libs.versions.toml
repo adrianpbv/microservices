@@ -1,0 +1,31 @@
+[versions]
+common-lib = "1.0.0"
+spring-boot = "4.0.0"
+spring-cloud = "2025.1.0"
+spring-doc = "3.0.3"
+spring-dep-manag = "1.1.7"
+h2 = "2.3.232"
+lombok = "1.18.36"
+otel = "2.21.0"
+micrometer = "1.15.4"
+jib = "3.4.5"
+image-tag = "s20"
+java = "21"
+springCloudVersion = "2025.1.0"
+common-version = "1.0"
+
+[libraries]
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
+spring-cloud-bom = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "spring-cloud" }
+springdoc-openapi = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "spring-doc" }
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+h2 = { module = "com.h2database:h2", version.ref = "h2" }
+micrometer-bom = { module = "io.micrometer:micrometer-bom", version.ref = "micrometer" }
+open-telemetry = { module = "io.opentelemetry.javaagent:opentelemetry-javaagent", version.ref = "otel"}
+bankdemo-common = { module = "com.bankdemo:common", version = "common-version"}
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+jib = { id = "com.google.cloud.tools.jib", version.ref = "jib" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dep-manag"}

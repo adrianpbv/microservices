@@ -1,6 +1,6 @@
 package com.bankdemo.accounts.exception;
 
-import com.bankdemo.accounts.dto.ErrorResponseDto;
+import com.bankdemo.common.dto.ErrorResponseDto;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;

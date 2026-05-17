@@ -1,8 +1,8 @@
 package com.bankdemo.loans.controller;
 
+import com.bankdemo.common.dto.ErrorResponseDto;
 import com.bankdemo.loans.config.LoansContactInfoDto;
 import com.bankdemo.loans.constants.LoansConstants;
-import com.bankdemo.loans.dto.ErrorResponseDto;
 import com.bankdemo.loans.dto.LoansDto;
 import com.bankdemo.loans.dto.ResponseDto;
 import com.bankdemo.loans.service.ILoansService;

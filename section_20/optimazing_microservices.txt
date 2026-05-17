@@ -3,3 +3,59 @@ section 20. Optimazing Microservices
 BOM is a dependency management mechanism that provides a central place to define the versions of dependencies (and their transitivedependencies). 
 Advantages:
 manage versions centrally in one place, 
+
+2. Create a BOM project for the microservices:
+2.1 Create a new model project, select SpringBoot, and Gradle-Kotlin, Java 21, Jar type.
+2.2 Don't add any dependencies yet.
+2.3 Delete the source code folder /src
+
+3. The build.gradle file will act as the parent configuration file for all the microservices.
+The microservices will get the dependencies version from the BOM project.
+
+For Maven projects:
+4. for maven projects Add the tag <packaging>bom</packaging>
+Without it the microservices will not be able to use the BOM project.
+
+5. Under the tag <properties> add the versions of the dependencies.
+
+6. It's recommended to specify the version of 3rd party libraries to have the control of which version
+is going to be used.
+
+For Gradle
+7. Follow the todos of the eazy-bom/build.gradle.kts
+
+8. Update the build.gradle.kts file of the microservices to import the dependencies using the BOM project
+8.1 Check Todos of accounts/build.gradle.kts file
+
+Test running the microservices:
+Run 1st: Config server -> don't forget to add the env variable to import the config file from the config server which uses Git on GitHub.
+eureka-server
+gateway-server
+accounts-service
+remaining ms
+
+Test building the config-server image with jib and run the container
+
+For common code create a multi-module project.
+9. Inside eazy-bom create a new module called common.
+like the new common module you can add new modules for securty, loging etc. and use them in the microservices.
+
+10. Declare the common module as a dependency in the BOM project. see todo 6 and 7 on eazy-bom/build.gradle.kts and eazy-bom/settings.gradle.kts
+11. Import the eazy-bom project in the common module and also includeBuild on the settings.gradle.kts file.
+
+12. Create /dto package in the common module and add the DTO classes like ErrorResponseDto.java
+13 Delete ErrorResponseDto from the microservices and import the common module to use the dto classes. // see TODO 8 import the common module in the accounts
+
+14. Test building the config-server image with jib and run the container.
+$ cd config-server
+$ ./gradlew jibDockerBuild
+
+15. Test building the accounts-service image with jib and run the container.
+$ cd accounts
+$ ./gradlew jibDockerBuild
+
+16. Use the docker-compose.yml file to run the config-server and accounts as it create a network bridge to connect the containers.
+The accounts service will be able to grab the configurations properties from the config-server.
+$ docker compose -f docker-compose-two.yml up # to run the containers -d to run in background
+$ docker compose -f docker-compose-two.yml ps # to list and check the status of the containers
+$ docker compose -f docker-compose-two.yml down # to stop the containers

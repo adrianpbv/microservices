@@ -1,18 +1,18 @@
 plugins {
     java
-    id("org.springframework.boot") version "4.0.0"
-    id("io.spring.dependency-management") version "1.1.7"
-    id("com.google.cloud.tools.jib") version "3.4.5"
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.jib) // Gradle automatically generates type-safe accessors from your libs.versions.toml file. The plugin IDs defined under [plugins]
 }
 
-group = "com.example"
-version = "0.0.1-SNAPSHOT"
+group = "com.bankdemo"
+version = "1.0"
 description = "Microservice for Accounts"
 
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(libs.versions.java.get().toInt())
     }
 }
 
@@ -26,15 +26,13 @@ repositories {
     mavenCentral()
 }
 
-extra["springCloudVersion"] = "2025.1.0"
-
 jib {
     dockerClient {
         executable = "/usr/local/bin/docker"
     }
     to {
         // run the command: $ ./gradlew jibDockerBuild
-        image = "adrianjpbv/${project.name}:s14" // image name will be adrianjpbv/accounts:s8
+        image = "adrianjpbv/${project.name}:s20" // image name will be adrianjpbv/accounts:s8
         auth {
             username = System.getenv("DOCKER_USERNAME") ?: project.findProperty("docker.username") as String?
             password = System.getenv("DOCKER_PASSWORD") ?: project.findProperty("docker.password") as String?
@@ -43,6 +41,13 @@ jib {
 }
 
 dependencies {
+    // TODO 5 import the BOM as a platform dependency
+    // BOM project
+    implementation(platform("com.bankdemo:eazy-bom:1.0")) // TODO 8 import common module
+
+    implementation(libs.bankdemo.common)
+
+    // TODO 6 Import dependecies trhough the BOM project
     // Spring
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
@@ -60,23 +65,21 @@ dependencies {
     // Open Feign
     implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
 
-    // Swagger
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
+    // Swagger - version comes from BOM
+    implementation(libs.springdoc.openapi)
 
     // Lombok
-    compileOnly("org.projectlombok:lombok")
-    annotationProcessor("org.projectlombok:lombok")
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
 
     // Micrometer and Prometheus
-    implementation("io.micrometer:micrometer-bom:1.15.4")
     implementation("io.micrometer:micrometer-registry-prometheus")
 
     // OpenTelemetry
-    runtimeOnly("io.opentelemetry.javaagent:opentelemetry-javaagent:2.21.0")
-
+    runtimeOnly(libs.open.telemetry)
 
     implementation("org.springframework.cloud:spring-cloud-stream")
-    // TODO 1 Add Kafka instead of RabbitMQ
+    // Add Kafka instead of RabbitMQ
     implementation("org.springframework.cloud:spring-cloud-stream-binder-kafka")
 
     // H2
@@ -89,7 +92,7 @@ dependencies {
 
 dependencyManagement {
     imports {
-        mavenBom("org.springframework.cloud:spring-cloud-dependencies:${property("springCloudVersion")}")
+        mavenBom("org.springframework.cloud:spring-cloud-dependencies:${libs.versions.springCloudVersion.get()}")
     }
 }
 

@@ -1,4 +1,4 @@
-package com.bankdemo.loans.dto;
+package com.bankdemo.common.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;

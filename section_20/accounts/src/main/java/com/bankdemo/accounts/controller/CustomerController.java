@@ -1,7 +1,7 @@
 package com.bankdemo.accounts.controller;
 
 import com.bankdemo.accounts.dto.CustomerDetailsDto;
-import com.bankdemo.accounts.dto.ErrorResponseDto;
+import com.bankdemo.common.dto.ErrorResponseDto;
 import com.bankdemo.accounts.service.ICustomersService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

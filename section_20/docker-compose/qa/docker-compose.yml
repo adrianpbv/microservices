@@ -247,7 +247,7 @@ services:
       service: network-deploy-service
 
   configserver:
-    image: "adrianjpbv/config-server:s14"
+    image: "adrianjpbv/config-server:s20"
     container_name: configserver-ms
     ports:
       - "8071:8071"
@@ -268,7 +268,7 @@ services:
 
 
   eurekaserver:
-    image: "adrianjpbv/eurekaserver:s14"
+    image: "adrianjpbv/eurekaserver:s20"
     container_name: eurekaserver-ms
     ports:
       - "8070:8070"
@@ -289,7 +289,7 @@ services:
       OTEL_SERVICE_NAME: "eurekaserver"
 
   accounts:
-    image: "adrianjpbv/accounts:s14"
+    image: "adrianjpbv/accounts:s20"
     container_name: accounts-ms
     ports:
       - "8080:8080"
@@ -315,7 +315,7 @@ services:
       service: microservice-eureka-config
 
   loans:
-    image: "adrianjpbv/loans:s14"
+    image: "adrianjpbv/loans:s20"
     container_name: loans-ms
     ports:
       - "8090:8090"
@@ -338,7 +338,7 @@ services:
       service: microservice-eureka-config
 
   cards:
-    image: "adrianjpbv/cards:s14"
+    image: "adrianjpbv/cards:s20"
     container_name: cards-ms
     ports:
       - "9000:9000"
@@ -361,7 +361,7 @@ services:
       service: microservice-eureka-config
 
   message:
-    image: "adrianjpbv/message:s14"
+    image: "adrianjpbv/message:s20"
     container_name: message-ms
     depends_on:
       kafka:
@@ -373,7 +373,7 @@ services:
       service: network-deploy-service
 
   gatewayserver:
-    image: "adrianjpbv/gateway-server:s14"
+    image: "adrianjpbv/gateway-server:s20"
     container_name: gatewayserver-ms
     ports:
       - "8072:8072"

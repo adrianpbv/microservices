@@ -1,8 +1,8 @@
 plugins {
-	java
-    id("org.springframework.boot") version "4.0.0"
-	id("io.spring.dependency-management") version "1.1.7"
-    id("com.google.cloud.tools.jib") version "3.4.5"
+    java
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.jib) // Gradle automatically generates type-safe accessors from your libs.versions.toml file. The plugin IDs defined under [plugins]
 }
 
 group = "com.bankdemo"
@@ -11,7 +11,7 @@ description = "eurekaserver"
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
+		languageVersion = JavaLanguageVersion.of(libs.versions.java.get().toInt())
 	}
 }
 
@@ -19,15 +19,13 @@ repositories {
 	mavenCentral()
 }
 
-extra["springCloudVersion"] = "2025.1.0"
-
 jib {
     dockerClient {
         executable = "/usr/local/bin/docker"
     }
     to {
         // run the command: $ ./gradlew jibDockerBuild
-        image = "adrianjpbv/${project.name}:s14" // image name will be adrianjpbv/eurekaserver:s8
+        image = "adrianjpbv/${project.name}:s20" // image name will be adrianjpbv/eurekaserver:s8
         auth {
             username = System.getenv("DOCKER_USERNAME") ?: project.findProperty("docker.username") as String?
             password = System.getenv("DOCKER_PASSWORD") ?: project.findProperty("docker.password") as String?
@@ -36,6 +34,8 @@ jib {
 }
 
 dependencies {
+    // BOM project
+    implementation(platform("com.bankdemo:eazy-bom:1.0"))
     // Spring
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.cloud:spring-cloud-starter-config")
@@ -44,11 +44,10 @@ dependencies {
 	implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-server")
 
     // Micrometer and Prometheus
-    implementation("io.micrometer:micrometer-bom:1.15.4")
     implementation("io.micrometer:micrometer-registry-prometheus")
 
     // OpenTelemetry
-    runtimeOnly("io.opentelemetry.javaagent:opentelemetry-javaagent:2.21.0")
+    runtimeOnly(libs.open.telemetry)
 
     // Test
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -57,7 +56,7 @@ dependencies {
 
 dependencyManagement {
 	imports {
-		mavenBom("org.springframework.cloud:spring-cloud-dependencies:${property("springCloudVersion")}")
+		mavenBom("org.springframework.cloud:spring-cloud-dependencies:${libs.versions.springCloudVersion.get()}")
 	}
 }
 
