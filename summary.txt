@@ -6,43 +6,67 @@ applications to microservices architecture due to benefits like scalability and 
 and data validation.
 2.1 Open Api and Swagger
 
-3. Containerization with Docker: Explains the essential role of Docker in containerizing applications for microservice
+3. Approaches to identify boundaries and right size microservices.
+
+4. Containerization with Docker: Explains the essential role of Docker in containerizing applications for microservice
 development.
 Use of Dockerfile or Google Jib to build the docker image
 Use of docker-compose to run multiple containers, setup the network,
 
-4. Configuration Management: Introduces Spring Cloud Config Server for effective management of application configurations.
-4.1 Spring Cloud Config Server is a centralized configuration server that provides centralized configuration management for
-microservices by connecting to a source that can a db, a remote repository, or the local file system.
-4.2 Refresh the configuration using the spring cloud bus that creates an event broadcasting channel to communicates
-with AMQP brokers, such as RabbitMQ, and Kafka
-4.3 Set up a WebHook in GitHub: Set up a webhook to automatically send a POST request to Config Service
+5. Cloud Native Apps and 15-Factor methodology.
+See page 52 of course guide.
 
-7. Service Discovery and Registration: Discusses the implementation of Eureka Server for service discovery alongside
+6. Configuration Management:
+Introduces Spring Cloud Config Server for effective management of application configurations.
+6.1 Spring Cloud Config Server is a centralized configuration server that provides centralized configuration management for
+microservices by connecting to a source that can a db, a remote repository, or the local file system.
+6.2 Refresh the configuration using the spring cloud bus that creates an event broadcasting channel to communicates
+with AMQP brokers, such as RabbitMQ, and Kafka
+6.3 Set up a WebHook in GitHub: Set up a webhook to automatically send a POST request to Config Service
+
+7. Using MySql inside the microservice.
+
+8. Service Discovery and Registration: Discusses the implementation of Eureka Server for service discovery alongside
 Spring Cloud Gateway for routing.
-7.1 Spring Cloud Netflix's Eureka will act as a service discovery agent
-7.2 Spring Cloud Load Balancer library for client-side load balancing
-7.3 Spring Cloud Gateway will act as the entry point for routing requests to the appropriate microservice &
+See page 79 of course guide.
+8.1 Spring Cloud Netflix's Eureka will act as a service discovery agent
+8.2 Spring Cloud Load Balancer library for client-side load balancing
+8.3 Spring Cloud Gateway will act as the entry point for routing requests to the appropriate microservice &
 acts as a central Policy Enforcement Point (PEP):
 * Routing (Both Static & Dynamic) Configuration made in the Gateway server like filters, predicates, etc
 * Security (Authentication &Authorization)
 * Logging, Auditing and Metrics collection
 
-8. Resilience and Fault Tolerance: Covers resilient design patterns employing Resilience4j to enhance system robustness.
+9. Gateway Routing and Cross cutting concerns in Microservices:
+See page 107 of course guide.
 
-9. Observability and Monitoring: Teaches how to implement monitoring tools like Grafana and Prometheus for maintaining
+10. Making microservices resilient:
+Resilience and Fault Tolerance: Covers resilient design patterns employing Resilience4j to enhance system robustness.
+
+11. Observability and Monitoring: Teaches how to implement monitoring tools like Grafana and Prometheus for maintaining
 system health.
 
-10. Security: Focuses on securing microservices using frameworks like OAuth2, Keycloak, and Spring Security.
+12. Security: Focuses on securing microservices using frameworks like OAuth2, Keycloak, and Spring Security.
 
-11. Event-Driven Microservices: Explores building asynchronous microservices using messaging systems like RabbitMQ and Kafka.
+13 y 14. Event-Driven Microservices: Explores building asynchronous microservices using messaging systems like RabbitMQ and Kafka.
+Usage of Spring Cloud Function and Spring Cloud Stream.
+Spring Cloud Stream is a framework for building event-driven microservices using Spring Boot.
+Spring Cloud Function is a framework for building serverless functions using Spring Boot.
 
-12. Deployment with Kubernetes: Guides on deploying microservices within a Kubernetes cluster and managing deployments using Helm.
+15. Container Orchestration using Kubernetes.
+Deployment with Kubernetes (K8)
+Setup local Kubernetes cluster using the docker desktop.
+Setup the cluster locally.
 
-13. Cloud Deployment: Covers the creation of Kubernetes clusters in cloud environments for efficient deployment.
+16. Helm: Guides on deploying microservices within a Kubernetes cluster and managing deployments using Helm.
 
-14. Include the dependency manager project or BOM to have a central place to define the versions of the dependencies.
+17. Server side service discovery and load balancing using Kubernetes.
 
-15. Create a projects Modules or libraries with common code to share between the microservices.
+18. Cloud Deployment: Covers the creation of Kubernetes clusters in cloud environments for efficient deployment.
+
+19. Introduction to Kubernetes Ingress, Service Mesh and mTLS.
+
+20. Include the dependency manager project or BOM to have a central place to define the versions of the dependencies.
+20.1 Create a projects Modules or libraries with common code to share between the microservices.
 
 
